@@ -153,3 +153,177 @@ VALUES
   ('exam-cs305-mid', 'CS305', 'mid-semester', (current_date + 35) + time '09:00', (current_date + 35) + time '11:00', 'Exam Hall 2'),
   ('exam-cs411-quiz', 'CS411', 'quiz', (current_date + 14) + time '10:00', (current_date + 14) + time '10:45', 'CSE-201')
 ON CONFLICT (id) DO NOTHING;
+
+-- Extra mock data for richer local demos.
+-- public.users intentionally remains empty; it is filled only through registration.
+
+INSERT INTO library.books (id, title, authors, subjects, courses, isbn, publication_year, publisher, description, digital_copy_url, popularity)
+VALUES
+  ('book-design-patterns', 'Design Patterns', ARRAY['Erich Gamma','Richard Helm','Ralph Johnson','John Vlissides'], ARRAY['software engineering','object oriented design','architecture'], ARRAY['CS301','CS401'], '9780201633610', 1994, 'Addison-Wesley', 'Classic catalog of reusable object-oriented design patterns.', NULL, 91),
+  ('book-computer-networks', 'Computer Networks', ARRAY['Andrew S. Tanenbaum','David J. Wetherall'], ARRAY['networks','protocols','internet'], ARRAY['CS306','IT304'], '9780132126953', 2011, 'Pearson', 'Networking fundamentals from physical layer to applications.', NULL, 84),
+  ('book-discrete-math', 'Discrete Mathematics and Its Applications', ARRAY['Kenneth H. Rosen'], ARRAY['mathematics','discrete structures','logic'], ARRAY['MA201','CS201'], '9781259676512', 2018, 'McGraw Hill', 'Discrete mathematics textbook for computer science foundations.', NULL, 82),
+  ('book-deep-learning', 'Deep Learning', ARRAY['Ian Goodfellow','Yoshua Bengio','Aaron Courville'], ARRAY['machine learning','deep learning','ai'], ARRAY['AI501','CS411'], '9780262035613', 2016, 'MIT Press', 'Foundational deep learning concepts and architectures.', 'https://library.example.edu/ebooks/deep-learning', 94),
+  ('book-refactoring', 'Refactoring', ARRAY['Martin Fowler'], ARRAY['software engineering','code quality','refactoring'], ARRAY['CS301','CS401'], '9780134757599', 2018, 'Addison-Wesley', 'Improving the design of existing code through disciplined refactoring.', NULL, 88)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO library.book_copies (id, book_id, barcode, status, floor, shelf)
+VALUES
+  ('copy-patterns-1', 'book-design-patterns', 'LIB-DP-001', 'available', '2', 'CS-SE-18'),
+  ('copy-networks-1', 'book-computer-networks', 'LIB-CN-001', 'available', '3', 'CS-NET-04'),
+  ('copy-discrete-1', 'book-discrete-math', 'LIB-DM-001', 'borrowed', '1', 'MATH-DS-09'),
+  ('copy-deep-1', 'book-deep-learning', 'LIB-DL-001', 'available', '3', 'CS-AI-06'),
+  ('copy-refactor-1', 'book-refactoring', 'LIB-RF-001', 'maintenance', '2', 'CS-SE-19')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO library.loans (id, student_id, copy_id, due_date, fine_amount)
+VALUES
+  ('loan-demo-3', 'stu-1004', 'copy-discrete-1', now() + interval '6 days', 0),
+  ('loan-demo-4', 'stu-1005', 'copy-clean-2', now() + interval '1 day', 0),
+  ('loan-demo-5', 'stu-1006', 'copy-ai-1', now() - interval '4 days', 50),
+  ('loan-demo-6', 'stu-1007', 'copy-algo-1', now() + interval '9 days', 0),
+  ('loan-demo-7', 'stu-1008', 'copy-refactor-1', now() - interval '1 day', 10)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO library.reservations (id, student_id, book_id, status)
+VALUES
+  ('reservation-demo-3', 'stu-1004', 'book-deep-learning', 'active'),
+  ('reservation-demo-4', 'stu-1005', 'book-design-patterns', 'active'),
+  ('reservation-demo-5', 'stu-1006', 'book-computer-networks', 'cancelled'),
+  ('reservation-demo-6', 'stu-1007', 'book-refactoring', 'active'),
+  ('reservation-demo-7', 'stu-1008', 'book-atomic-habits', 'fulfilled')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO cafeteria.counters (id, name, opens_at, closes_at, location)
+VALUES
+  ('counter-dessert', 'Dessert Studio', '12:00', '22:00', 'Student Center Atrium'),
+  ('counter-juice', 'Fresh Juice Bar', '08:00', '20:00', 'Sports Complex Lobby'),
+  ('counter-night', 'Night Canteen', '20:00', '02:00', 'Hostel Block C'),
+  ('counter-grill', 'Campus Grill', '11:30', '21:00', 'Food Court North'),
+  ('counter-bakery', 'Bakery Corner', '07:30', '19:00', 'Library Plaza')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO cafeteria.menu_items (id, name, category, diet, allergens, calories, protein_grams, price, counter_id, is_available, tags)
+VALUES
+  ('food-fruit-bowl', 'Seasonal Fruit Bowl', 'snack', 'vegan', ARRAY[]::TEXT[], 180, 4, 55, 'counter-juice', true, ARRAY['healthy','fresh']),
+  ('food-veg-biryani', 'Vegetable Biryani', 'lunch', 'veg', ARRAY['dairy'], 610, 16, 90, 'counter-main', true, ARRAY['popular','rice']),
+  ('food-egg-roll', 'Egg Roll', 'snack', 'non-veg', ARRAY['egg','gluten'], 430, 18, 75, 'counter-grill', true, ARRAY['quick bite']),
+  ('food-brownie', 'Chocolate Brownie', 'snack', 'veg', ARRAY['dairy','gluten'], 360, 6, 60, 'counter-dessert', true, ARRAY['dessert']),
+  ('food-lemonade', 'Mint Lemonade', 'beverage', 'vegan', ARRAY[]::TEXT[], 110, 1, 35, 'counter-juice', true, ARRAY['beverage','summer'])
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO cafeteria.daily_menus (id, menu_date, day_of_week, breakfast, lunch, dinner, specials)
+VALUES
+  ('menu-saturday', current_date + 5, 'saturday', ARRAY['food-poha','food-tea'], ARRAY['food-veg-biryani','food-salad-bowl'], ARRAY['food-masala-dosa'], ARRAY['food-brownie']),
+  ('menu-sunday', current_date + 6, 'sunday', ARRAY['food-idli','food-lemonade'], ARRAY['food-paneer-wrap','food-fruit-bowl'], ARRAY['food-rajma-rice'], ARRAY['food-samosa']),
+  ('menu-next-monday', current_date + 7, 'monday', ARRAY['food-poha','food-tea'], ARRAY['food-chicken-rice','food-jain-thali'], ARRAY['food-masala-dosa'], ARRAY['food-egg-roll']),
+  ('menu-next-tuesday', current_date + 8, 'tuesday', ARRAY['food-idli','food-fruit-bowl'], ARRAY['food-paneer-wrap','food-veg-biryani'], ARRAY['food-rajma-rice'], ARRAY['food-lemonade']),
+  ('menu-next-wednesday', current_date + 9, 'wednesday', ARRAY['food-poha','food-tea'], ARRAY['food-salad-bowl','food-jain-thali'], ARRAY['food-masala-dosa'], ARRAY['food-brownie'])
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO cafeteria.feedback (id, student_id, item_id, rating, message)
+VALUES
+  ('feedback-demo-3', 'stu-1003', 'food-fruit-bowl', 5, 'Fresh and good before practice.'),
+  ('feedback-demo-4', 'stu-1004', 'food-veg-biryani', 4, 'Good portion size.'),
+  ('feedback-demo-5', 'stu-1005', 'food-egg-roll', 3, 'Tasty but a bit oily.'),
+  ('feedback-demo-6', 'stu-1006', 'food-brownie', 5, 'Best dessert on campus.'),
+  ('feedback-demo-7', 'stu-1007', 'food-lemonade', 4, 'Refreshing during afternoon classes.')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO events.clubs (id, name, category, description, contact_email)
+VALUES
+  ('club-robotics', 'Robotics Society', 'technical', 'Autonomous bots, embedded systems, and competitions.', 'robotics@example.edu'),
+  ('club-literary', 'Literary Circle', 'cultural', 'Debates, writing workshops, and poetry meets.', 'literary@example.edu'),
+  ('club-eco', 'Eco Campus Collective', 'social', 'Sustainability drives and climate awareness.', 'eco@example.edu'),
+  ('club-photo', 'ShutterUp Photography Club', 'creative', 'Photo walks, editing sessions, and exhibitions.', 'photo@example.edu'),
+  ('club-entrepreneur', 'Startup Cell', 'entrepreneurship', 'Founder talks, pitch practice, and startup mentoring.', 'startup@example.edu')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO events.events (id, title, club_id, category, starts_at, ends_at, venue, description, is_free, requires_registration, capacity, tags, status)
+VALUES
+  ('event-robotics-demo', 'Line Follower Bot Demo', 'club-robotics', 'technical', (current_date + 3) + time '14:00', (current_date + 3) + time '16:00', 'Robotics Lab', 'Student teams demonstrate line follower bots and sensor tuning.', true, true, 40, ARRAY['robotics','embedded'], 'scheduled'),
+  ('event-poetry-slam', 'Open Poetry Slam', 'club-literary', 'cultural', (current_date + 5) + time '18:00', (current_date + 5) + time '20:00', 'Mini Auditorium', 'Open mic poetry evening for students.', true, false, 120, ARRAY['poetry','open mic'], 'scheduled'),
+  ('event-clean-drive', 'Campus Clean Drive', 'club-eco', 'workshop', (current_date + 6) + time '07:30', (current_date + 6) + time '09:30', 'Main Gate', 'Morning cleanliness and recycling awareness drive.', true, true, 80, ARRAY['sustainability','volunteer'], 'scheduled'),
+  ('event-photo-walk', 'Golden Hour Photo Walk', 'club-photo', 'workshop', (current_date + 7) + time '17:00', (current_date + 7) + time '18:30', 'Old Campus Garden', 'Guided campus photography walk.', true, true, 35, ARRAY['photography','creative'], 'scheduled'),
+  ('event-pitch-night', 'Student Startup Pitch Night', 'club-entrepreneur', 'seminar', (current_date + 8) + time '16:00', (current_date + 8) + time '19:00', 'Incubation Center', 'Pitch practice with faculty and alumni feedback.', true, true, 70, ARRAY['startup','pitch'], 'scheduled')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO events.sessions (id, event_id, title, starts_at, ends_at, speaker, room)
+VALUES
+  ('session-robotics-1', 'event-robotics-demo', 'Sensor Calibration Basics', (current_date + 3) + time '14:00', (current_date + 3) + time '14:45', 'Robotics Society', 'Robotics Lab'),
+  ('session-poetry-1', 'event-poetry-slam', 'Featured Student Performances', (current_date + 5) + time '18:15', (current_date + 5) + time '19:30', 'Literary Circle', 'Mini Auditorium'),
+  ('session-clean-1', 'event-clean-drive', 'Waste Segregation Briefing', (current_date + 6) + time '07:30', (current_date + 6) + time '08:00', 'Eco Campus Collective', 'Main Gate'),
+  ('session-photo-1', 'event-photo-walk', 'Composition Walkthrough', (current_date + 7) + time '17:00', (current_date + 7) + time '17:30', 'ShutterUp Team', 'Old Campus Garden'),
+  ('session-pitch-1', 'event-pitch-night', 'Pitch Feedback Round', (current_date + 8) + time '17:00', (current_date + 8) + time '18:30', 'Startup Cell Mentors', 'Incubation Center')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO events.registrations (id, event_id, student_id, status)
+VALUES
+  ('registration-demo-3', 'event-robotics-demo', 'stu-1003', 'registered'),
+  ('registration-demo-4', 'event-clean-drive', 'stu-1004', 'registered'),
+  ('registration-demo-5', 'event-photo-walk', 'stu-1005', 'waitlisted'),
+  ('registration-demo-6', 'event-pitch-night', 'stu-1006', 'registered'),
+  ('registration-demo-7', 'event-mcp-workshop', 'stu-1007', 'cancelled')
+ON CONFLICT (event_id, student_id) DO NOTHING;
+
+INSERT INTO academics.faculty (id, name, department, email, office)
+VALUES
+  ('fac-networks', 'Prof. Rhea Menon', 'Computer Science', 'rhea.menon@example.edu', 'CSE-210'),
+  ('fac-os', 'Dr. Vikram Sethi', 'Computer Science', 'vikram.sethi@example.edu', 'CSE-218'),
+  ('fac-ece', 'Prof. Nandini Iyer', 'Electronics', 'nandini.iyer@example.edu', 'ECE-105'),
+  ('fac-mgmt', 'Dr. Farhan Qureshi', 'Management Studies', 'farhan.qureshi@example.edu', 'MGMT-011'),
+  ('fac-english', 'Prof. Ananya Sen', 'Humanities', 'ananya.sen@example.edu', 'HUM-204')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO academics.courses (id, code, title, department, semester, credits, prerequisites, faculty_id, description)
+VALUES
+  ('course-cs306', 'CS306', 'Computer Networks', 'Computer Science', 5, 4, ARRAY['CS201'], 'fac-networks', 'Layered network architecture, routing, transport protocols, and applications.'),
+  ('course-cs304', 'CS304', 'Operating Systems', 'Computer Science', 5, 4, ARRAY['CS201'], 'fac-os', 'Processes, scheduling, memory management, file systems, and concurrency.'),
+  ('course-ec201', 'EC201', 'Digital Electronics', 'Electronics', 3, 3, ARRAY['PH101'], 'fac-ece', 'Logic gates, combinational circuits, sequential circuits, and digital design.'),
+  ('course-mg201', 'MG201', 'Innovation Management', 'Management Studies', 3, 2, ARRAY[]::TEXT[], 'fac-mgmt', 'Innovation frameworks, product thinking, and market validation.'),
+  ('course-hu101', 'HU101', 'Communication Skills', 'Humanities', 1, 2, ARRAY[]::TEXT[], 'fac-english', 'Academic writing, presentations, interviews, and collaborative communication.')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO academics.syllabi (id, course_code, units, textbooks)
+VALUES
+  ('syllabus-cs306', 'CS306', '[{"title":"Network Layers","topics":["OSI model","TCP/IP","switching"],"outcomes":["Explain layered architecture","Compare switching techniques"]},{"title":"Routing and Transport","topics":["routing algorithms","TCP","UDP"],"outcomes":["Trace packet flow","Analyze reliable transport"]}]'::jsonb, ARRAY['Computer Networks']),
+  ('syllabus-cs304', 'CS304', '[{"title":"Processes and Scheduling","topics":["process states","threads","CPU scheduling"],"outcomes":["Compare schedulers","Model process lifecycle"]},{"title":"Memory and Files","topics":["paging","segmentation","file systems"],"outcomes":["Explain virtual memory","Describe file allocation"]}]'::jsonb, ARRAY['Operating System Concepts']),
+  ('syllabus-ec201', 'EC201', '[{"title":"Logic Design","topics":["boolean algebra","gates","K-map"],"outcomes":["Simplify logic functions","Build combinational circuits"]},{"title":"Sequential Systems","topics":["flip-flops","counters","registers"],"outcomes":["Design basic sequential circuits"]}]'::jsonb, ARRAY['Digital Design']),
+  ('syllabus-mg201', 'MG201', '[{"title":"Innovation Basics","topics":["idea validation","customer discovery"],"outcomes":["Frame a problem","Validate assumptions"]},{"title":"Product Strategy","topics":["MVP","market sizing","pitching"],"outcomes":["Prepare a basic product pitch"]}]'::jsonb, ARRAY['Innovation and Entrepreneurship']),
+  ('syllabus-hu101', 'HU101', '[{"title":"Academic Communication","topics":["emails","reports","summaries"],"outcomes":["Write clear academic documents"]},{"title":"Presentations","topics":["slides","delivery","Q&A"],"outcomes":["Deliver structured presentations"]}]'::jsonb, ARRAY['Technical Communication'])
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO academics.policies (id, title, category, body)
+VALUES
+  ('policy-internship', 'Internship Policy', 'general', 'Students may apply for approved internships after completing department eligibility requirements and faculty mentor approval.'),
+  ('policy-project', 'Final Year Project Policy', 'general', 'Final year projects require a registered guide, periodic reviews, and a final demonstration with documentation.'),
+  ('policy-revaluation', 'Exam Revaluation Policy', 'exam', 'Students may apply for revaluation within five working days of result publication through the examination cell.'),
+  ('policy-lab-attendance', 'Lab Attendance Policy', 'attendance', 'Lab attendance is tracked separately and missed lab sessions must be compensated with faculty approval.'),
+  ('policy-anti-ragging', 'Anti-Ragging Policy', 'general', 'The campus has zero tolerance for ragging, harassment, or intimidation. Violations must be reported immediately.')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO academics.calendar_items (id, title, item_type, item_date, department, course_code)
+VALUES
+  ('cal-db-assignment', 'DBMS Normalization Assignment', 'assignment', (current_date + 6) + time '23:59', 'Computer Science', 'CS305'),
+  ('cal-networks-lab', 'Networks Lab Practical', 'exam', (current_date + 18) + time '14:00', 'Computer Science', 'CS306'),
+  ('cal-cultural-day', 'Cultural Day Holiday', 'holiday', current_date + 20, 'all', NULL),
+  ('cal-project-review', 'Mini Project Review 1', 'review', (current_date + 16) + time '10:00', 'Information Technology', 'IT303'),
+  ('cal-sports-meet', 'Annual Sports Meet', 'event', (current_date + 25) + time '08:00', 'all', NULL)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO academics.notices (id, title, body, department)
+VALUES
+  ('notice-networks-lab', 'Networks lab kit list', 'CS306 students should bring Ethernet cables for next lab.', 'Computer Science'),
+  ('notice-os-tutorial', 'OS tutorial moved', 'CS304 tutorial moves to Room CSE-112 this Thursday.', 'Computer Science'),
+  ('notice-ece-workshop', 'Digital electronics workshop', 'EC201 students can attend the breadboard design workshop on Saturday.', 'Electronics'),
+  ('notice-communication-viva', 'Communication viva schedule', 'HU101 viva slots will be published by Friday evening.', 'Humanities'),
+  ('notice-startup-credits', 'Startup elective briefing', 'MG201 students should attend the startup elective briefing in MGMT-011.', 'Management Studies')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO academics.exam_schedules (id, course_code, exam_type, starts_at, ends_at, venue)
+VALUES
+  ('exam-cs306-mid', 'CS306', 'mid-semester', (current_date + 36) + time '09:00', (current_date + 36) + time '11:00', 'Exam Hall 3'),
+  ('exam-cs304-mid', 'CS304', 'mid-semester', (current_date + 37) + time '09:00', (current_date + 37) + time '11:00', 'Exam Hall 2'),
+  ('exam-ec201-lab', 'EC201', 'lab', (current_date + 21) + time '13:00', (current_date + 21) + time '15:00', 'ECE Lab 1'),
+  ('exam-mg201-quiz', 'MG201', 'quiz', (current_date + 12) + time '10:00', (current_date + 12) + time '10:30', 'MGMT-011'),
+  ('exam-hu101-quiz', 'HU101', 'quiz', (current_date + 11) + time '15:00', (current_date + 11) + time '15:30', 'HUM-204')
+ON CONFLICT (id) DO NOTHING;
