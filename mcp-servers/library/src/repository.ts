@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { tryQuery } from "@campus/db";
 import {
   bookCopies,
   libraryBooks,
@@ -86,6 +87,64 @@ export class LibraryRepository {
       url: "https://research.example.edu/papers/index-selection"
     }
   ];
+
+  async loadFromDatabase() {
+    const [books, copies, loans, reservations] = await Promise.all([
+      tryQuery<{
+        id: string;
+        title: string;
+        authors: string[];
+        subjects: string[];
+        courses: string[];
+        isbn: string;
+        publication_year: number;
+        publisher: string;
+        description: string;
+        digital_copy_url: string | null;
+        popularity: number;
+        created_at: Date;
+      }>("SELECT * FROM library.books ORDER BY popularity DESC"),
+      tryQuery<BookCopy>("SELECT id, book_id as \"bookId\", barcode, status, floor, shelf FROM library.book_copies ORDER BY id"),
+      tryQuery<LibraryLoan>("SELECT id, student_id as \"studentId\", copy_id as \"copyId\", due_date as \"dueDate\", fine_amount as \"fineAmount\" FROM library.loans ORDER BY id"),
+      tryQuery<Reservation>("SELECT id, student_id as \"studentId\", book_id as \"bookId\", status, created_at as \"createdAt\" FROM library.reservations ORDER BY created_at DESC")
+    ]);
+
+    if (books?.rows.length) {
+      this.books = books.rows.map((book) => ({
+        id: book.id,
+        title: book.title,
+        authors: book.authors,
+        subjects: book.subjects,
+        courses: book.courses,
+        isbn: book.isbn,
+        year: book.publication_year,
+        publisher: book.publisher,
+        description: book.description,
+        digitalCopyUrl: book.digital_copy_url ?? undefined,
+        popularity: Number(book.popularity),
+        createdAt: book.created_at.toISOString()
+      }));
+    }
+
+    if (copies?.rows.length) {
+      this.copies = copies.rows;
+    }
+
+    if (loans?.rows.length) {
+      this.loans = loans.rows.map((loan) => ({
+        ...loan,
+        dueDate: new Date(loan.dueDate).toISOString(),
+        fineAmount: Number(loan.fineAmount)
+      }));
+    }
+
+    if (reservations?.rows.length) {
+      this.reservations = reservations.rows.map((reservation) => ({
+        ...reservation,
+        createdAt: new Date(reservation.createdAt).toISOString()
+      }));
+    }
+  }
 
   searchBooks(query = "", filters: { subject?: string; course?: string; author?: string } = {}) {
     return this.books.filter((book) => {
