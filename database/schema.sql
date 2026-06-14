@@ -3,6 +3,21 @@ CREATE SCHEMA IF NOT EXISTS cafeteria;
 CREATE SCHEMA IF NOT EXISTS events;
 CREATE SCHEMA IF NOT EXISTS academics;
 
+CREATE TABLE IF NOT EXISTS public.users (
+  id TEXT PRIMARY KEY,
+  role TEXT NOT NULL CHECK (role IN ('student', 'admin')),
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  year_of_study INTEGER,
+  branch TEXT,
+  semester INTEGER CHECK (semester IN (1, 2)),
+  enrollment_number TEXT UNIQUE,
+  teacher_id TEXT UNIQUE,
+  department TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS library.books (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
