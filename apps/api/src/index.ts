@@ -1,8 +1,10 @@
 import "dotenv/config";
 import cors from "cors";
-import express from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import { z } from "zod";
 import { composeFallbackAnswer } from "./answerComposer.js";
+import { filterToolsForRole, hasAdminIntent, partitionToolCallsByRole } from "./authorization.js";
+import { authenticate, initializeAuth, login, me, register, type AuthenticatedRequest } from "./auth.js";
 import { fallbackRoute } from "./fallbackRouter.js";
 import { McpClientManager } from "./mcpClientManager.js";
 import { OllamaClient } from "./ollamaClient.js";
@@ -20,22 +22,20 @@ const endpoints: McpEndpoint[] = [
 ];
 
 const chatSchema = z.object({
-  message: z.string().min(1),
-  student: z
-    .object({
-      studentId: z.string().optional(),
-      name: z.string().optional(),
-      department: z.string().optional(),
-      semester: z.number().optional(),
-      dietaryPreference: z.enum(["veg", "non-veg", "jain", "vegan"]).optional(),
-      interests: z.array(z.string()).optional()
-    })
-    .optional()
+  message: z.string().min(1)
 });
 
 const manager = new McpClientManager(endpoints);
 const ollama = new OllamaClient(ollamaBaseUrl, ollamaModel);
 const app = express();
+
+const asyncHandler =
+  (handler: (req: Request, res: Response, next: NextFunction) => Promise<void>) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    handler(req, res, next).catch(next);
+  };
+
+const requireAuth = asyncHandler(authenticate);
 
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
@@ -49,12 +49,20 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-app.get("/api/tools", async (_req, res) => {
-  const result = await manager.listTools();
-  res.json(result);
-});
+app.post("/api/auth/register", asyncHandler(register));
+app.post("/api/auth/login", asyncHandler(login));
+app.get("/api/auth/me", requireAuth, asyncHandler(me as unknown as (req: Request, res: Response, next: NextFunction) => Promise<void>));
 
-app.get("/api/dashboard", async (_req, res) => {
+app.get("/api/tools", requireAuth, asyncHandler(async (req, res) => {
+  const result = await manager.listTools();
+  const user = (req as AuthenticatedRequest).user;
+  res.json({
+    tools: filterToolsForRole(result.tools, user.role),
+    unavailableServers: result.unavailableServers
+  });
+}));
+
+app.get("/api/dashboard", requireAuth, asyncHandler(async (_req, res) => {
   const calls: ToolCallPlan[] = [
     { qualifiedName: "library__get_popular_books", arguments: { limit: 3 }, reason: "Dashboard card." },
     { qualifiedName: "cafeteria__get_today_menu", arguments: {}, reason: "Dashboard card." },
@@ -63,29 +71,45 @@ app.get("/api/dashboard", async (_req, res) => {
   ];
   const toolResults = await Promise.all(calls.map((call) => manager.callQualifiedTool(call.qualifiedName, call.arguments)));
   res.json({ cards: toolResults });
-});
+}));
 
-app.post("/api/chat", async (req, res) => {
+app.post("/api/chat", requireAuth, asyncHandler(async (req, res) => {
   const parsed = chatSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
 
-  const { message, student } = parsed.data;
+  const { message } = parsed.data;
+  const user = (req as AuthenticatedRequest).user;
   const { tools, unavailableServers } = await manager.listTools();
+  const allowedTools = filterToolsForRole(tools, user.role);
+
+  if (user.role === "student" && hasAdminIntent(message)) {
+    const response: ChatResponse = {
+      answer: "You are signed in as a student, so you cannot perform admin actions like creating, updating, deleting, publishing, or marking campus records. You can still ask to view books, menus, events, policies, schedules, and your own student-related information.",
+      model: ollamaModel,
+      usedOllama: false,
+      usedFallbackRouter: false,
+      toolCalls: [],
+      toolResults: [],
+      unavailableServers
+    };
+    res.json(response);
+    return;
+  }
 
   let usedOllama = false;
   let usedFallbackRouter = false;
   let toolCalls: ToolCallPlan[] = [];
   let ollamaPlanningContent = "";
 
-  if (tools.length > 0) {
+  if (allowedTools.length > 0) {
     try {
-      const plan = await ollama.planToolCalls(message, tools);
+      const plan = await ollama.planToolCalls(message, allowedTools);
       usedOllama = true;
       ollamaPlanningContent = plan.content;
-      toolCalls = plan.toolCalls.filter((call) => tools.some((tool) => tool.qualifiedName === call.qualifiedName));
+      toolCalls = plan.toolCalls.filter((call) => allowedTools.some((tool) => tool.qualifiedName === call.qualifiedName));
     } catch {
       usedOllama = false;
     }
@@ -93,7 +117,24 @@ app.post("/api/chat", async (req, res) => {
 
   if (toolCalls.length === 0) {
     usedFallbackRouter = true;
-    toolCalls = fallbackRoute(message, student?.studentId);
+    toolCalls = fallbackRoute(message, user.id);
+  }
+
+  const partitioned = partitionToolCallsByRole(toolCalls, tools, user.role);
+  toolCalls = partitioned.allowed;
+
+  if (toolCalls.length === 0 && partitioned.denied.length > 0) {
+    const response: ChatResponse = {
+      answer: "You are signed in as a student, so you cannot perform that admin action. Please ask an admin user to make changes to campus records.",
+      model: ollamaModel,
+      usedOllama,
+      usedFallbackRouter,
+      toolCalls: [],
+      toolResults: [],
+      unavailableServers
+    };
+    res.json(response);
+    return;
   }
 
   const toolResults = await Promise.all(
@@ -128,8 +169,24 @@ app.post("/api/chat", async (req, res) => {
   };
 
   res.json(response);
+}));
+
+app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  res.status(500).json({
+    error: error instanceof Error ? error.message : "Internal server error"
+  });
 });
 
-app.listen(port, () => {
-  console.log(`Campus AI backend listening on http://localhost:${port}`);
+initializeAuth()
+  .catch((error) => {
+    console.warn(
+      `Auth table could not be verified. Register/login requires Postgres: ${
+        error instanceof Error ? error.message : "unknown database error"
+      }`
+    );
+  })
+  .finally(() => {
+    app.listen(port, () => {
+      console.log(`Campus AI backend listening on http://localhost:${port}`);
+    });
 });
