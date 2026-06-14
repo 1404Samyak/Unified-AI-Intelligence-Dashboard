@@ -44,7 +44,7 @@ export function registerJsonTool<TShape extends z.ZodRawShape>(
 export function startMcpHttpServer(options: {
   port: number;
   label: string;
-  buildServer: () => McpServer;
+  buildServer: () => McpServer | Promise<McpServer>;
 }) {
   const app = express();
   app.use(cors());
@@ -74,7 +74,7 @@ export function startMcpHttpServer(options: {
           }
         };
 
-        const server = options.buildServer();
+        const server = await options.buildServer();
         await server.connect(transport);
       }
 
