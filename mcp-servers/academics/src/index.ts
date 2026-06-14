@@ -9,9 +9,10 @@ const port = Number(process.env.ACADEMICS_MCP_PORT ?? 4104);
 startMcpHttpServer({
   port,
   label: "Academics",
-  buildServer: () => {
+  buildServer: async () => {
     const server = createCampusServer("campus-academics-mcp");
     const repository = new AcademicsRepository();
+    await repository.loadFromDatabase();
     const service = new AcademicsService(repository);
     registerAcademicsTools(server, service);
     return server;
