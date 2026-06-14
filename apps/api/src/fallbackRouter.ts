@@ -14,17 +14,32 @@ const knownBookTitles = [
   "Database System Concepts",
   "Artificial Intelligence: A Modern Approach",
   "Operating System Concepts",
-  "Atomic Habits"
+  "Atomic Habits",
+  "Design Patterns",
+  "Computer Networks",
+  "Discrete Mathematics and Its Applications",
+  "Deep Learning",
+  "Refactoring"
 ];
 
 const knownFood = ["idli", "poha", "paneer", "chicken", "jain", "salad", "dosa", "rajma", "tea", "samosa"];
 
 const extractBook = (message: string) =>
-  knownBookTitles.find((title) => message.toLowerCase().includes(title.toLowerCase())) ?? "Clean Code";
+  knownBookTitles.find((title) => message.toLowerCase().includes(title.toLowerCase())) ?? message;
+
+const extractLibraryCourse = (message: string) => {
+  const code = message.match(/\b[A-Z]{2,4}[- ]?\d{3}\b/i)?.[0];
+  if (code) return code.toUpperCase().replace(/[-\s]/g, "");
+  if (/\b(cs|cse|computer science)\b/i.test(message)) return "CS";
+  if (/\b(ece|electronics)\b/i.test(message)) return "ECE";
+  if (/\b(it|information technology)\b/i.test(message)) return "IT";
+  if (/\b(ai|artificial intelligence)\b/i.test(message)) return "AI";
+  return undefined;
+};
 
 const extractCourse = (message: string) => {
-  const code = message.match(/\b[A-Z]{2,3}\d{3}\b/i)?.[0];
-  if (code) return code.toUpperCase();
+  const code = message.match(/\b[A-Z]{2,4}[- ]?\d{3}\b/i)?.[0];
+  if (code) return code.toUpperCase().replace(/[-\s]/g, "");
   if (message.includes("ai") || message.includes("artificial intelligence")) return "CS411";
   if (message.includes("database") || message.includes("dbms")) return "CS305";
   return "CS305";
@@ -33,8 +48,10 @@ const extractCourse = (message: string) => {
 export function fallbackRoute(message: string, studentId = "stu-1001"): ToolCallPlan[] {
   const lower = message.toLowerCase();
   const calls: ToolCallPlan[] = [];
+  const asksForLibraryInfo = includesAny(lower, ["book", "books", "library", "borrow", "available", "fine", "due", "journal", "paper", "digital copy", "ebook"]);
 
-  if (includesAny(lower, ["book", "library", "borrow", "available", "fine", "due", "journal", "paper", "digital copy", "ebook"])) {
+  if (asksForLibraryInfo) {
+    const libraryCourse = extractLibraryCourse(message);
     if (includesAny(lower, ["fine", "penalty"])) {
       calls.push({ qualifiedName: "library__get_user_fines", arguments: { studentId }, reason: "Question asks about library fines." });
     } else if (includesAny(lower, ["due", "borrowed", "issued"])) {
@@ -47,8 +64,10 @@ export function fallbackRoute(message: string, studentId = "stu-1001"): ToolCall
       calls.push({ qualifiedName: "library__check_digital_copy_available", arguments: { bookIdOrTitle: extractBook(lower) }, reason: "Question asks about digital availability." });
     } else if (includesAny(lower, ["available", "availability"])) {
       calls.push({ qualifiedName: "library__check_book_availability", arguments: { bookIdOrTitle: extractBook(lower) }, reason: "Question asks whether a book is available." });
+    } else if (libraryCourse) {
+      calls.push({ qualifiedName: "library__search_books", arguments: { query: "", course: libraryCourse }, reason: "Question asks for books mapped to a course or department." });
     } else {
-      calls.push({ qualifiedName: "library__search_books", arguments: { query: extractBook(lower) }, reason: "Question appears to ask for a book search." });
+      calls.push({ qualifiedName: "library__search_books", arguments: { query: message }, reason: "Question appears to ask for a book search." });
     }
   }
 
@@ -89,7 +108,10 @@ export function fallbackRoute(message: string, studentId = "stu-1001"): ToolCall
     }
   }
 
-  if (includesAny(lower, ["attendance", "policy", "exam", "grading", "course", "syllabus", "faculty", "calendar", "assignment", "holiday", "lab", "hostel", "scholarship", "fee", "academic"])) {
+  const asksForAcademicInfo = includesAny(lower, ["attendance", "policy", "exam", "grading", "course", "courses", "syllabus", "faculty", "calendar", "assignment", "holiday", "lab", "hostel", "scholarship", "fee", "academic"]);
+  const asksForSpecificAcademicDetail = includesAny(lower, ["attendance", "policy", "exam", "grading", "syllabus", "faculty", "calendar", "assignment", "holiday", "lab", "hostel", "scholarship", "fee", "academic", "credits", "prerequisite"]);
+
+  if (asksForAcademicInfo && (!asksForLibraryInfo || asksForSpecificAcademicDetail)) {
     if (includesAny(lower, ["attendance"])) {
       calls.push({ qualifiedName: "academics__get_attendance_policy", arguments: {}, reason: "Question asks about attendance policy." });
     } else if (includesAny(lower, ["exam"])) {
