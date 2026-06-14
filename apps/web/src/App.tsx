@@ -10,6 +10,7 @@ import {
   GraduationCap,
   LibraryBig,
   Loader2,
+  LogOut,
   MessageSquareText,
   RefreshCcw,
   Search,
@@ -20,7 +21,23 @@ import {
   Wrench,
   XCircle
 } from "lucide-react";
-import { getDashboard, getHealth, getTools, sendChat, type ChatResponse, type RegisteredTool, type ToolResult } from "./api.js";
+import {
+  clearStoredToken,
+  getDashboard,
+  getHealth,
+  getMe,
+  getStoredToken,
+  getTools,
+  loginUser,
+  registerUser,
+  sendChat,
+  setStoredToken,
+  type AuthUser,
+  type ChatResponse,
+  type RegisterPayload,
+  type RegisteredTool,
+  type ToolResult
+} from "./api.js";
 
 type ChatMessage = {
   id: string;
@@ -45,10 +62,12 @@ const quickPrompts = [
   "What is the attendance policy and my library fines?"
 ];
 
-const isAdminTool = (name: string) =>
-  /^(create|update|delete|mark|cancel_book_reservation|renew_book|reserve_book|register_for_event|cancel_event_registration|rate_food_item|submit_menu_feedback)/.test(name);
+const isAdminTool = (tool: Pick<RegisteredTool, "name" | "description">) =>
+  tool.description?.toLowerCase().startsWith("admin:") || /^(create|update|delete|mark)_/.test(tool.name);
 
 function App() {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [view, setView] = useState<View>("overview");
   const [dashboard, setDashboard] = useState<ToolResult[]>([]);
   const [tools, setTools] = useState<RegisteredTool[]>([]);
@@ -74,18 +93,43 @@ function App() {
     }, {});
   }, [tools]);
 
-  const adminCount = tools.filter((tool) => isAdminTool(tool.name)).length;
+  const adminCount = tools.filter((tool) => isAdminTool(tool)).length;
   const studentCount = tools.length - adminCount;
+  const initials = (user?.name ?? "User")
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   useEffect(() => {
-    void refreshAll();
+    const token = getStoredToken();
+    if (!token) {
+      setAuthLoading(false);
+      return;
+    }
+
+    getMe()
+      .then((result) => setUser(result.user))
+      .catch(() => {
+        clearStoredToken();
+        setUser(null);
+      })
+      .finally(() => setAuthLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      void refreshAll();
+    }
+  }, [user]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   async function refreshAll() {
+    if (!user) return;
     setRefreshing(true);
     try {
       const [health, dashboardResult, toolResult] = await Promise.all([getHealth(), getDashboard(), getTools()]);
@@ -102,7 +146,7 @@ function App() {
 
   async function submitPrompt(prompt: string) {
     const trimmed = prompt.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed || loading || !user) return;
 
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
@@ -144,6 +188,42 @@ function App() {
     void submitPrompt(input);
   }
 
+  function handleLogout() {
+    clearStoredToken();
+    setUser(null);
+    setDashboard([]);
+    setTools([]);
+    setMessages([
+      {
+        id: "intro",
+        role: "assistant",
+        text: "Campus sources are connected through independent MCP servers. Ask about books, meals, events, or academic rules."
+      }
+    ]);
+  }
+
+  if (authLoading) {
+    return (
+      <main className="auth-shell">
+        <section className="auth-card">
+          <Loader2 className="spin" size={22} />
+          <h1>Loading Campus AI</h1>
+        </section>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <AuthScreen
+        onAuthenticated={(auth) => {
+          setStoredToken(auth.token);
+          setUser(auth.user);
+        }}
+      />
+    );
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -173,12 +253,17 @@ function App() {
         </nav>
 
         <section className="student-panel" aria-label="Student profile">
-          <div className="avatar">AS</div>
+          <div className="avatar">{initials}</div>
           <div>
-            <strong>Aarav Sharma</strong>
-            <span>CSE, Semester 5</span>
+            <strong>{user.name}</strong>
+            <span>{user.role === "student" ? `${user.branch ?? "Student"}, Sem ${user.semester ?? "-"}` : `${user.department ?? "Admin"} admin`}</span>
           </div>
         </section>
+
+        <button className="logout-button" onClick={handleLogout}>
+          <LogOut size={16} />
+          Logout
+        </button>
 
         <section className="status-panel" aria-label="System status">
           <div className="status-line">
@@ -435,7 +520,7 @@ function ToolsExplorer({ groupedTools }: { groupedTools: Record<string, Register
           const Icon = meta.icon;
           const filtered = domainTools.filter((tool) => {
             if (mode === "all") return true;
-            return mode === "admin" ? isAdminTool(tool.name) : !isAdminTool(tool.name);
+            return mode === "admin" ? isAdminTool(tool) : !isAdminTool(tool);
           });
           return (
             <section className="tool-column" key={domain}>
@@ -460,6 +545,170 @@ function ToolsExplorer({ groupedTools }: { groupedTools: Record<string, Register
         })}
       </div>
     </section>
+  );
+}
+
+function AuthScreen({ onAuthenticated }: { onAuthenticated: (auth: { user: AuthUser; token: string }) => void }) {
+  const [mode, setMode] = useState<"register" | "login">("register");
+  const [role, setRole] = useState<"student" | "admin">("student");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    yearOfStudy: "1",
+    branch: "",
+    semester: "1",
+    enrollmentNumber: "",
+    teacherId: "",
+    department: ""
+  });
+
+  const updateField = (field: keyof typeof form, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      if (mode === "login") {
+        const auth = await loginUser({ email: form.email, password: form.password });
+        onAuthenticated(auth);
+        return;
+      }
+
+      const payload: RegisterPayload =
+        role === "student"
+          ? {
+              role,
+              name: form.name,
+              email: form.email,
+              password: form.password,
+              yearOfStudy: Number(form.yearOfStudy),
+              branch: form.branch,
+              semester: Number(form.semester) as 1 | 2,
+              enrollmentNumber: form.enrollmentNumber
+            }
+          : {
+              role,
+              name: form.name,
+              email: form.email,
+              password: form.password,
+              teacherId: form.teacherId,
+              department: form.department
+            };
+
+      const auth = await registerUser(payload);
+      onAuthenticated(auth);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Authentication failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="auth-shell">
+      <section className="auth-card">
+        <div className="brand-block auth-brand">
+          <div className="brand-mark">
+            <Sparkles size={21} />
+          </div>
+          <div>
+            <h1>Campus AI</h1>
+            <p>Unified dashboard</p>
+          </div>
+        </div>
+
+        <div className="segmented auth-tabs" role="tablist" aria-label="Authentication mode">
+          <button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")} type="button">
+            Register
+          </button>
+          <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")} type="button">
+            Login
+          </button>
+        </div>
+
+        {mode === "register" && (
+          <div className="role-toggle">
+            <button className={role === "student" ? "active" : ""} onClick={() => setRole("student")} type="button">
+              Student
+            </button>
+            <button className={role === "admin" ? "active" : ""} onClick={() => setRole("admin")} type="button">
+              Admin
+            </button>
+          </div>
+        )}
+
+        <form className="auth-form" onSubmit={handleSubmit}>
+          {mode === "register" && (
+            <label>
+              Name
+              <input value={form.name} onChange={(event) => updateField("name", event.target.value)} required />
+            </label>
+          )}
+
+          <label>
+            Email
+            <input type="email" value={form.email} onChange={(event) => updateField("email", event.target.value)} required />
+          </label>
+
+          <label>
+            Password
+            <input type="password" value={form.password} onChange={(event) => updateField("password", event.target.value)} minLength={6} required />
+          </label>
+
+          {mode === "register" && role === "student" && (
+            <>
+              <div className="form-grid">
+                <label>
+                  Year
+                  <input type="number" min="1" max="5" value={form.yearOfStudy} onChange={(event) => updateField("yearOfStudy", event.target.value)} required />
+                </label>
+                <label>
+                  Semester
+                  <select value={form.semester} onChange={(event) => updateField("semester", event.target.value)} required>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                Branch
+                <input value={form.branch} onChange={(event) => updateField("branch", event.target.value)} required />
+              </label>
+              <label>
+                Enrollment number
+                <input value={form.enrollmentNumber} onChange={(event) => updateField("enrollmentNumber", event.target.value)} required />
+              </label>
+            </>
+          )}
+
+          {mode === "register" && role === "admin" && (
+            <>
+              <label>
+                Teacher ID
+                <input value={form.teacherId} onChange={(event) => updateField("teacherId", event.target.value)} required />
+              </label>
+              <label>
+                Department
+                <input value={form.department} onChange={(event) => updateField("department", event.target.value)} required />
+              </label>
+            </>
+          )}
+
+          {error && <p className="auth-error">{error}</p>}
+
+          <button className="auth-submit" type="submit" disabled={loading}>
+            {loading ? <Loader2 className="spin" size={17} /> : mode === "register" ? "Create account" : "Login"}
+          </button>
+        </form>
+      </section>
+    </main>
   );
 }
 
