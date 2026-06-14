@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { tryQuery } from "@campus/db";
 import {
   academicCalendar,
   academicPolicies,
@@ -110,6 +111,113 @@ export class AcademicsRepository {
       venue: "CSE-201"
     }
   ];
+
+  async loadFromDatabase() {
+    const [faculty, dbCourses, policies, calendar, syllabi, notices, exams] = await Promise.all([
+      tryQuery<Faculty>("SELECT id, name, department, email, office FROM academics.faculty ORDER BY name"),
+      tryQuery<{
+        id: string;
+        code: string;
+        title: string;
+        department: string;
+        semester: number;
+        credits: string | number;
+        prerequisites: string[];
+        facultyId: string;
+        description: string;
+      }>(
+        'SELECT id, code, title, department, semester, credits, prerequisites, faculty_id as "facultyId", description FROM academics.courses ORDER BY code'
+      ),
+      tryQuery<{
+        id: string;
+        title: string;
+        category: AcademicPolicy["category"];
+        body: string;
+        updatedAt: Date;
+      }>('SELECT id, title, category, body, updated_at as "updatedAt" FROM academics.policies ORDER BY title'),
+      tryQuery<{
+        id: string;
+        title: string;
+        type: string;
+        date: Date;
+        department: string;
+        courseCode: string | null;
+      }>('SELECT id, title, item_type as "type", item_date as "date", department, course_code as "courseCode" FROM academics.calendar_items ORDER BY item_date'),
+      tryQuery<{
+        id: string;
+        courseCode: string;
+        units: Syllabus["units"];
+        textbooks: string[];
+        updatedAt: Date;
+      }>('SELECT id, course_code as "courseCode", units, textbooks, updated_at as "updatedAt" FROM academics.syllabi ORDER BY course_code'),
+      tryQuery<{
+        id: string;
+        title: string;
+        body: string;
+        department: string;
+        createdAt: Date;
+      }>('SELECT id, title, body, department, created_at as "createdAt" FROM academics.notices ORDER BY created_at DESC'),
+      tryQuery<{
+        id: string;
+        courseCode: string;
+        examType: ExamSchedule["examType"];
+        startsAt: Date;
+        endsAt: Date;
+        venue: string;
+      }>('SELECT id, course_code as "courseCode", exam_type as "examType", starts_at as "startsAt", ends_at as "endsAt", venue FROM academics.exam_schedules ORDER BY starts_at')
+    ]);
+
+    if (faculty?.rows.length) {
+      this.faculties = faculty.rows;
+    }
+
+    if (dbCourses?.rows.length) {
+      this.courses = dbCourses.rows.map((course) => ({
+        ...course,
+        credits: Number(course.credits)
+      }));
+    }
+
+    if (policies?.rows.length) {
+      this.policies = policies.rows.map((policy) => ({
+        ...policy,
+        updatedAt: policy.updatedAt.toISOString()
+      }));
+    }
+
+    if (calendar?.rows.length) {
+      this.calendar = calendar.rows.map((item) => ({
+        id: item.id,
+        title: item.title,
+        type: item.type,
+        date: item.date.toISOString(),
+        department: item.department,
+        ...(item.courseCode ? { courseCode: item.courseCode } : {})
+      }));
+    }
+
+    if (syllabi?.rows.length) {
+      this.syllabi = syllabi.rows.map((syllabus) => ({
+        ...syllabus,
+        updatedAt: syllabus.updatedAt.toISOString()
+      }));
+    }
+
+    if (notices?.rows.length) {
+      this.notices = notices.rows.map((notice) => ({
+        ...notice,
+        createdAt: notice.createdAt.toISOString()
+      }));
+    }
+
+    if (exams?.rows.length) {
+      this.examSchedules = exams.rows.map((exam) => ({
+        ...exam,
+        startsAt: exam.startsAt.toISOString(),
+        endsAt: exam.endsAt.toISOString()
+      }));
+    }
+  }
 
   searchHandbook(query = "") {
     const needle = normalize(query);
