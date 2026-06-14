@@ -1,0 +1,27 @@
+{
+  "name": "unified-ai-intelligence-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Unified campus dashboard powered by independent MCP servers and a local Ollama model.",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "mcp-servers/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "predev": "npm run build -w @campus/shared && npm run build -w @campus/mcp-common",
+    "dev": "concurrently -n library,cafeteria,events,academics,api,web -c green,magenta,cyan,yellow,blue,white \"npm run dev -w @campus/library-mcp\" \"npm run dev -w @campus/cafeteria-mcp\" \"npm run dev -w @campus/events-mcp\" \"npm run dev -w @campus/academics-mcp\" \"npm run dev -w @campus/api\" \"npm run dev -w @campus/web\"",
+    "build": "npm run build -ws",
+    "typecheck": "npm run typecheck -ws --if-present",
+    "db:schema": "psql \"$DATABASE_URL\" -f database/schema.sql",
+    "db:seed": "psql \"$DATABASE_URL\" -f database/seed.sql"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
