@@ -364,22 +364,31 @@ function SourcePreview({ result }: { result: ToolResult }) {
 }
 
 function ToolTrace({ response }: { response: ChatResponse }) {
+  const successfulDomains = Array.from(new Set(response.toolResults.filter((result) => result.ok).map((result) => result.domain)));
+  const failedCount = response.toolResults.filter((result) => !result.ok).length;
+
   return (
     <div className="trace">
       <div className="trace-row">
-        <span>{response.usedOllama ? "Ollama planned" : "Fallback planned"}</span>
-        <span>{response.toolResults.length} calls</span>
+        <span>Campus source check complete</span>
+        <span>{successfulDomains.length} source{successfulDomains.length === 1 ? "" : "s"}</span>
       </div>
       <div className="trace-tools">
-        {response.toolResults.map((result) => {
-          const meta = domainMeta[result.domain];
+        {successfulDomains.map((domain) => {
+          const meta = domainMeta[domain];
           return (
-            <span className={`tool-pill ${meta.color}`} key={`${result.qualifiedName}-${JSON.stringify(result.arguments)}`}>
-              {result.ok ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
-              {result.qualifiedName}
+            <span className={`tool-pill ${meta.color}`} key={domain}>
+              <CheckCircle2 size={13} />
+              {meta.label}
             </span>
           );
         })}
+        {failedCount > 0 && (
+          <span className="tool-pill muted-pill">
+            <XCircle size={13} />
+            {failedCount} unavailable
+          </span>
+        )}
       </div>
     </div>
   );
