@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell,
   BookOpen,
@@ -319,7 +319,7 @@ function App() {
                 {messages.map((message) => (
                   <article key={message.id} className={`message ${message.role}`}>
                     <div className="message-label">{message.role === "user" ? "You" : "Campus AI"}</div>
-                    <p>{message.text}</p>
+                    <MessageContent role={message.role} text={message.text} />
                     {message.response && <ToolTrace response={message.response} />}
                   </article>
                 ))}
@@ -362,6 +362,138 @@ function MetricCard({ icon: Icon, label, value, tone }: { icon: typeof Wrench; l
       <strong>{value}</strong>
     </article>
   );
+}
+
+const cleanInline = (value: string) =>
+  value
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^\s*#+\s*/, "")
+    .trim();
+
+const splitTableRow = (line: string) =>
+  line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map(cleanInline);
+
+const isTableDivider = (line: string) =>
+  splitTableRow(line).every((cell) => /^:?-{3,}:?$/.test(cell));
+
+const isTableLine = (line: string) => line.includes("|") && splitTableRow(line).length > 1;
+
+const isListLine = (line: string) => /^\s*(?:[-*•]\s+|\d+[.)]\s+)/.test(line);
+
+const stripListMarker = (line: string) =>
+  cleanInline(line.replace(/^\s*(?:[-*•]\s+|\d+[.)]\s+)/, ""));
+
+function MessageContent({ role, text }: { role: ChatMessage["role"]; text: string }) {
+  if (role === "user") {
+    return <p>{text}</p>;
+  }
+
+  const lines = text.split(/\r?\n/);
+  const blocks: ReactNode[] = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index]?.trim() ?? "";
+
+    if (!line) {
+      index += 1;
+      continue;
+    }
+
+    if (isTableLine(line)) {
+      const tableLines: string[] = [];
+      let tableIndex = index;
+      while (tableIndex < lines.length && isTableLine(lines[tableIndex] ?? "")) {
+        tableLines.push(lines[tableIndex] ?? "");
+        tableIndex += 1;
+      }
+
+      const [headerLine, dividerLine, ...bodyLines] = tableLines;
+      const hasDivider = Boolean(dividerLine && isTableDivider(dividerLine));
+      const headers = splitTableRow(headerLine ?? "");
+      const rows = (hasDivider ? bodyLines : tableLines.slice(1)).map(splitTableRow);
+
+      if (headers.length > 1 && rows.length > 0) {
+        blocks.push(
+          <div className="response-table-wrap" key={`table-${index}`}>
+            <table className="response-table">
+              <thead>
+                <tr>
+                  {headers.map((header, headerIndex) => (
+                    <th key={`${header}-${headerIndex}`}>{header}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, rowIndex) => (
+                  <tr key={`row-${rowIndex}`}>
+                    {headers.map((_header, cellIndex) => (
+                      <td key={`cell-${cellIndex}`}>{row[cellIndex] ?? ""}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+        index = tableIndex;
+        continue;
+      }
+    }
+
+    if (isListLine(line)) {
+      const items: string[] = [];
+      while (index < lines.length && isListLine(lines[index] ?? "")) {
+        items.push(stripListMarker(lines[index] ?? ""));
+        index += 1;
+      }
+      blocks.push(
+        <ul className="response-list" key={`list-${index}`}>
+          {items.map((item, itemIndex) => (
+            <li key={`${item}-${itemIndex}`}>{item}</li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    if (/^#{1,4}\s+/.test(line) || (/^[*\s]*[A-Za-z][A-Za-z0-9 /&-]{2,}:$/.test(line) && line.length < 72)) {
+      blocks.push(
+        <h3 className="response-heading" key={`heading-${index}`}>
+          {cleanInline(line).replace(/:$/, "")}
+        </h3>
+      );
+      index += 1;
+      continue;
+    }
+
+    const paragraphLines: string[] = [];
+    while (
+      index < lines.length &&
+      lines[index]?.trim() &&
+      !isTableLine(lines[index] ?? "") &&
+      !isListLine(lines[index] ?? "") &&
+      !/^#{1,4}\s+/.test(lines[index] ?? "")
+    ) {
+      paragraphLines.push(lines[index] ?? "");
+      index += 1;
+    }
+
+    blocks.push(
+      <p className="response-paragraph" key={`paragraph-${index}`}>
+        {cleanInline(paragraphLines.join(" "))}
+      </p>
+    );
+  }
+
+  return <div className="message-content">{blocks}</div>;
 }
 
 function DashboardCards({ cards }: { cards: ToolResult[] }) {
