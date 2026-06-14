@@ -4,22 +4,6 @@ import { z } from "zod";
 import type { EventsService } from "./service.js";
 
 const eventCategory = z.enum(["technical", "cultural", "sports", "workshop", "seminar", "hackathon"]);
-const eventStatus = z.enum(["scheduled", "cancelled", "completed"]);
-
-const eventInput = {
-  title: z.string(),
-  clubId: z.string(),
-  category: eventCategory,
-  startsAt: z.string(),
-  endsAt: z.string(),
-  venue: z.string(),
-  description: z.string(),
-  isFree: z.boolean().default(true),
-  requiresRegistration: z.boolean().default(false),
-  capacity: z.number().int().min(1).default(50),
-  tags: z.array(z.string()).default([]),
-  status: eventStatus.default("scheduled")
-};
 
 export function registerEventsTools(server: McpServer, service: EventsService) {
   registerJsonTool(server, "get_today_events", "Get campus events happening today.", {}, () => service.getTodayEvents());
@@ -79,55 +63,4 @@ export function registerEventsTools(server: McpServer, service: EventsService) {
   registerJsonTool(server, "search_clubs", "Search campus clubs.", {
     query: z.string().default("")
   }, (args) => service.searchClubs(args.query));
-  registerJsonTool(server, "create_event", "Admin: create a campus event.", eventInput, (args) => service.createEvent(args));
-  registerJsonTool(server, "update_event", "Admin: update a campus event.", {
-    eventId: z.string(),
-    patch: z.record(z.unknown())
-  }, (args) => service.updateEvent(args.eventId, args.patch));
-  registerJsonTool(server, "delete_event", "Admin: delete a campus event.", {
-    eventId: z.string()
-  }, (args) => service.deleteEvent(args.eventId));
-  registerJsonTool(server, "create_club", "Admin: create a campus club.", {
-    name: z.string(),
-    category: z.string(),
-    description: z.string(),
-    contactEmail: z.string().email()
-  }, (args) => service.createClub(args));
-  registerJsonTool(server, "update_club", "Admin: update a campus club.", {
-    clubId: z.string(),
-    patch: z.object({
-      name: z.string().optional(),
-      category: z.string().optional(),
-      description: z.string().optional(),
-      contactEmail: z.string().email().optional()
-    })
-  }, (args) => service.updateClub(args.clubId, args.patch));
-  registerJsonTool(server, "create_event_session", "Admin: create an event session.", {
-    eventId: z.string(),
-    title: z.string(),
-    startsAt: z.string(),
-    endsAt: z.string(),
-    speaker: z.string(),
-    room: z.string()
-  }, (args) => service.createEventSession(args));
-  registerJsonTool(server, "update_event_session", "Admin: update an event session.", {
-    sessionId: z.string(),
-    patch: z.object({
-      eventId: z.string().optional(),
-      title: z.string().optional(),
-      startsAt: z.string().optional(),
-      endsAt: z.string().optional(),
-      speaker: z.string().optional(),
-      room: z.string().optional()
-    })
-  }, (args) => service.updateEventSession(args.sessionId, args.patch));
-  registerJsonTool(server, "mark_event_cancelled", "Admin: mark an event as cancelled.", {
-    eventId: z.string(),
-    reason: z.string().optional()
-  }, (args) => service.markEventCancelled(args.eventId, args.reason));
-  registerJsonTool(server, "create_event_announcement", "Admin: publish an event announcement.", {
-    eventId: z.string(),
-    title: z.string(),
-    body: z.string()
-  }, (args) => service.createEventAnnouncement(args.eventId, args.title, args.body));
 }
