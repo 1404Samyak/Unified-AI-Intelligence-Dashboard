@@ -4,36 +4,25 @@ const tokenKey = "campus-auth-token";
 
 export type AuthUser = {
   id: string;
-  role: "student" | "admin";
+  role: "student";
   name: string;
   email: string;
   yearOfStudy?: number;
   branch?: string;
   semester?: 1 | 2;
   enrollmentNumber?: string;
-  teacherId?: string;
-  department?: string;
 };
 
-export type RegisterPayload =
-  | {
-      role: "student";
-      name: string;
-      email: string;
-      password: string;
-      yearOfStudy: number;
-      branch: string;
-      semester: 1 | 2;
-      enrollmentNumber: string;
-    }
-  | {
-      role: "admin";
-      name: string;
-      email: string;
-      password: string;
-      teacherId: string;
-      department: string;
-    };
+export type RegisterPayload = {
+  role: "student";
+  name: string;
+  email: string;
+  password: string;
+  yearOfStudy: number;
+  branch: string;
+  semester: 1 | 2;
+  enrollmentNumber: string;
+};
 
 export type AuthResponse = {
   user: AuthUser;
