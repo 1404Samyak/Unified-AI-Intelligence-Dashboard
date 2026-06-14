@@ -87,10 +87,29 @@ const authHeaders = (): Record<string, string> => {
   return token ? { authorization: `Bearer ${token}` } : {};
 };
 
+const formatApiError = (error: unknown) => {
+  if (typeof error === "string") return error;
+  if (!error || typeof error !== "object") return "Request failed";
+
+  const details = error as {
+    formErrors?: string[];
+    fieldErrors?: Record<string, string[] | undefined>;
+  };
+
+  const messages = [
+    ...(details.formErrors ?? []),
+    ...Object.entries(details.fieldErrors ?? {}).flatMap(([field, fieldMessages]) =>
+      (fieldMessages ?? []).map((message) => `${field}: ${message}`)
+    )
+  ];
+
+  return messages.length ? messages.join(" ") : "Request failed";
+};
+
 async function parseResponse<T>(response: Response) {
-  const payload = (await response.json().catch(() => ({}))) as T & { error?: string };
+  const payload = (await response.json().catch(() => ({}))) as T & { error?: unknown };
   if (!response.ok) {
-    throw new Error(payload.error ?? "Request failed");
+    throw new Error(formatApiError(payload.error));
   }
   return payload as T;
 }

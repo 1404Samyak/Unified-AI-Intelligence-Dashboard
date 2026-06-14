@@ -119,7 +119,7 @@ const registerSchema = z.discriminatedUnion("role", [
     name: z.string().min(2),
     email: z.string().email(),
     password: z.string().min(6),
-    teacherId: z.string().min(2),
+    teacherId: z.string().min(1),
     department: z.string().min(2)
   })
 ]);
