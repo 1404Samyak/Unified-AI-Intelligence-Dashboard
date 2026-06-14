@@ -15,7 +15,6 @@ import {
   RefreshCcw,
   Search,
   Send,
-  Shield,
   Sparkles,
   Utensils,
   Wrench,
@@ -62,9 +61,6 @@ const quickPrompts = [
   "What is the attendance policy and my library fines?"
 ];
 
-const isAdminTool = (tool: Pick<RegisteredTool, "name" | "description">) =>
-  tool.description?.toLowerCase().startsWith("admin:") || /^(create|update|delete|mark)_/.test(tool.name);
-
 function App() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -93,8 +89,6 @@ function App() {
     }, {});
   }, [tools]);
 
-  const adminCount = tools.filter((tool) => isAdminTool(tool)).length;
-  const studentCount = tools.length - adminCount;
   const initials = (user?.name ?? "User")
     .split(" ")
     .map((part) => part[0])
@@ -256,7 +250,7 @@ function App() {
           <div className="avatar">{initials}</div>
           <div>
             <strong>{user.name}</strong>
-            <span>{user.role === "student" ? `${user.branch ?? "Student"}, Sem ${user.semester ?? "-"}` : `${user.department ?? "Admin"} admin`}</span>
+            <span>{user.branch ?? "Student"} · Sem {user.semester ?? "-"}</span>
           </div>
         </section>
 
@@ -301,10 +295,10 @@ function App() {
 
         {view === "overview" && (
           <section className="overview-grid">
-            <MetricCard icon={Wrench} label="Student tools" value={studentCount.toString()} tone="blue" />
-            <MetricCard icon={Shield} label="Admin tools" value={adminCount.toString()} tone="green" />
+            <MetricCard icon={Wrench} label="Student tools" value={tools.length.toString()} tone="blue" />
             <MetricCard icon={Database} label="MCP servers" value="4" tone="amber" />
             <MetricCard icon={Clock3} label="Fetch mode" value="Live" tone="rose" />
+            <MetricCard icon={Bot} label="Model" value={model} tone="green" />
             <DashboardCards cards={dashboard} />
           </section>
         )}
@@ -502,35 +496,21 @@ function SourceRail({ tools }: { tools: RegisteredTool[] }) {
 }
 
 function ToolsExplorer({ groupedTools }: { groupedTools: Record<string, RegisteredTool[]> }) {
-  const [mode, setMode] = useState<"all" | "student" | "admin">("all");
-
   return (
     <section className="tools-layout">
-      <div className="segmented" role="tablist" aria-label="Tool filter">
-        {(["all", "student", "admin"] as const).map((item) => (
-          <button className={mode === item ? "active" : ""} key={item} onClick={() => setMode(item)}>
-            {item}
-          </button>
-        ))}
-      </div>
-
       <div className="tool-columns">
         {Object.entries(groupedTools).map(([domain, domainTools]) => {
           const meta = domainMeta[domain as keyof typeof domainMeta];
           const Icon = meta.icon;
-          const filtered = domainTools.filter((tool) => {
-            if (mode === "all") return true;
-            return mode === "admin" ? isAdminTool(tool) : !isAdminTool(tool);
-          });
           return (
             <section className="tool-column" key={domain}>
               <div className="tool-column-head">
                 <Icon size={18} />
                 <strong>{meta.label}</strong>
-                <span>{filtered.length}</span>
+                <span>{domainTools.length}</span>
               </div>
               <div className="tool-list">
-                {filtered.map((tool) => (
+                {domainTools.map((tool) => (
                   <article className="tool-row" key={tool.qualifiedName}>
                     <BookOpen size={15} />
                     <div>
@@ -550,7 +530,6 @@ function ToolsExplorer({ groupedTools }: { groupedTools: Record<string, Register
 
 function AuthScreen({ onAuthenticated }: { onAuthenticated: (auth: { user: AuthUser; token: string }) => void }) {
   const [mode, setMode] = useState<"register" | "login">("register");
-  const [role, setRole] = useState<"student" | "admin">("student");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
@@ -560,9 +539,7 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (auth: { user: AuthU
     yearOfStudy: "1",
     branch: "",
     semester: "1",
-    enrollmentNumber: "",
-    teacherId: "",
-    department: ""
+    enrollmentNumber: ""
   });
 
   const updateField = (field: keyof typeof form, value: string) => {
@@ -581,26 +558,16 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (auth: { user: AuthU
         return;
       }
 
-      const payload: RegisterPayload =
-        role === "student"
-          ? {
-              role,
-              name: form.name,
-              email: form.email,
-              password: form.password,
-              yearOfStudy: Number(form.yearOfStudy),
-              branch: form.branch,
-              semester: Number(form.semester) as 1 | 2,
-              enrollmentNumber: form.enrollmentNumber
-            }
-          : {
-              role,
-              name: form.name,
-              email: form.email,
-              password: form.password,
-              teacherId: form.teacherId,
-              department: form.department
-            };
+      const payload: RegisterPayload = {
+        role: "student",
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        yearOfStudy: Number(form.yearOfStudy),
+        branch: form.branch,
+        semester: Number(form.semester) as 1 | 2,
+        enrollmentNumber: form.enrollmentNumber
+      };
 
       const auth = await registerUser(payload);
       onAuthenticated(auth);
@@ -633,17 +600,6 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (auth: { user: AuthU
           </button>
         </div>
 
-        {mode === "register" && (
-          <div className="role-toggle">
-            <button className={role === "student" ? "active" : ""} onClick={() => setRole("student")} type="button">
-              Student
-            </button>
-            <button className={role === "admin" ? "active" : ""} onClick={() => setRole("admin")} type="button">
-              Admin
-            </button>
-          </div>
-        )}
-
         <form className="auth-form" onSubmit={handleSubmit}>
           {mode === "register" && (
             <label>
@@ -662,7 +618,7 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (auth: { user: AuthU
             <input type="password" value={form.password} onChange={(event) => updateField("password", event.target.value)} minLength={6} required />
           </label>
 
-          {mode === "register" && role === "student" && (
+          {mode === "register" && (
             <>
               <div className="form-grid">
                 <label>
@@ -684,19 +640,6 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (auth: { user: AuthU
               <label>
                 Enrollment number
                 <input value={form.enrollmentNumber} onChange={(event) => updateField("enrollmentNumber", event.target.value)} required />
-              </label>
-            </>
-          )}
-
-          {mode === "register" && role === "admin" && (
-            <>
-              <label>
-                Teacher ID
-                <input value={form.teacherId} onChange={(event) => updateField("teacherId", event.target.value)} required />
-              </label>
-              <label>
-                Department
-                <input value={form.department} onChange={(event) => updateField("department", event.target.value)} required />
               </label>
             </>
           )}
