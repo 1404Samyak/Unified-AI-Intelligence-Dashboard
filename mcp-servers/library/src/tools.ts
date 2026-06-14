@@ -3,19 +3,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { LibraryService } from "./service.js";
 
-const bookInput = {
-  title: z.string(),
-  authors: z.array(z.string()).default([]),
-  subjects: z.array(z.string()).default([]),
-  courses: z.array(z.string()).default([]),
-  isbn: z.string().default(""),
-  year: z.number().int().default(new Date().getFullYear()),
-  publisher: z.string().default(""),
-  description: z.string().default(""),
-  digitalCopyUrl: z.string().url().optional(),
-  popularity: z.number().int().optional()
-};
-
 export function registerLibraryTools(server: McpServer, service: LibraryService) {
   registerJsonTool(server, "search_books", "Search library books by title, author, subject, course, ISBN, or description.", {
     query: z.string().default(""),
@@ -99,42 +86,4 @@ export function registerLibraryTools(server: McpServer, service: LibraryService)
   registerJsonTool(server, "search_research_papers", "Search research paper records available through the library.", {
     query: z.string().default("")
   }, (args) => service.searchResearchPapers(args.query));
-
-  registerJsonTool(server, "create_book", "Admin: create a new library book record.", bookInput, (args) => service.createBook(args));
-
-  registerJsonTool(server, "update_book", "Admin: update a library book record.", {
-    bookId: z.string(),
-    patch: z.record(z.unknown())
-  }, (args) => service.updateBook(args.bookId, args.patch));
-
-  registerJsonTool(server, "delete_book", "Admin: delete a library book and its copies.", {
-    bookId: z.string()
-  }, (args) => service.deleteBook(args.bookId));
-
-  registerJsonTool(server, "create_book_copy", "Admin: create a physical copy for a book.", {
-    bookId: z.string(),
-    barcode: z.string(),
-    status: z.enum(["available", "borrowed", "reserved", "maintenance"]).optional(),
-    floor: z.string(),
-    shelf: z.string()
-  }, (args) => service.createBookCopy(args));
-
-  registerJsonTool(server, "update_book_copy_status", "Admin: update the status of a physical book copy.", {
-    copyId: z.string(),
-    status: z.enum(["available", "borrowed", "reserved", "maintenance"])
-  }, (args) => service.updateBookCopyStatus(args.copyId, args.status));
-
-  registerJsonTool(server, "create_author", "Admin: create an author reference record.", {
-    name: z.string()
-  }, (args) => service.createAuthor(args.name));
-
-  registerJsonTool(server, "update_author", "Admin: update an author reference record.", {
-    authorId: z.string(),
-    name: z.string()
-  }, (args) => service.updateAuthor(args.authorId, args.name));
-
-  registerJsonTool(server, "create_library_notice", "Admin: publish a library notice.", {
-    title: z.string(),
-    body: z.string()
-  }, (args) => service.createLibraryNotice(args.title, args.body));
 }
