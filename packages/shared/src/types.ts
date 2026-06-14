@@ -17,7 +17,7 @@ export type StudentContext = {
   interests?: string[];
 };
 
-export type ToolAudience = "student" | "admin";
+export type ToolAudience = "student";
 
 export type CampusToolInfo = {
   domain: "library" | "cafeteria" | "events" | "academics";
