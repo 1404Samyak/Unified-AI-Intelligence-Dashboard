@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { tryQuery } from "@campus/db";
 import {
   campusEvents,
   eventClubs,
@@ -54,6 +55,66 @@ export class EventsRepository {
       createdAt: new Date().toISOString()
     }
   ];
+
+  async loadFromDatabase() {
+    const [clubs, events, sessions, registrations] = await Promise.all([
+      tryQuery<EventClub>("SELECT id, name, category, description, contact_email as \"contactEmail\" FROM events.clubs ORDER BY name"),
+      tryQuery<{
+        id: string;
+        title: string;
+        clubId: string;
+        category: CampusEvent["category"];
+        startsAt: Date;
+        endsAt: Date;
+        venue: string;
+        description: string;
+        isFree: boolean;
+        requiresRegistration: boolean;
+        capacity: number;
+        tags: string[];
+        status: CampusEvent["status"];
+      }>(
+        'SELECT id, title, club_id as "clubId", category, starts_at as "startsAt", ends_at as "endsAt", venue, description, is_free as "isFree", requires_registration as "requiresRegistration", capacity, tags, status FROM events.events ORDER BY starts_at'
+      ),
+      tryQuery<{
+        id: string;
+        eventId: string;
+        title: string;
+        startsAt: Date;
+        endsAt: Date;
+        speaker: string;
+        room: string;
+      }>('SELECT id, event_id as "eventId", title, starts_at as "startsAt", ends_at as "endsAt", speaker, room FROM events.sessions ORDER BY starts_at'),
+      tryQuery<EventRegistration>('SELECT id, event_id as "eventId", student_id as "studentId", status, created_at as "createdAt" FROM events.registrations ORDER BY created_at DESC')
+    ]);
+
+    if (clubs?.rows.length) {
+      this.clubs = clubs.rows;
+    }
+
+    if (events?.rows.length) {
+      this.events = events.rows.map((event) => ({
+        ...event,
+        startsAt: event.startsAt.toISOString(),
+        endsAt: event.endsAt.toISOString()
+      }));
+    }
+
+    if (sessions?.rows.length) {
+      this.sessions = sessions.rows.map((session) => ({
+        ...session,
+        startsAt: session.startsAt.toISOString(),
+        endsAt: session.endsAt.toISOString()
+      }));
+    }
+
+    if (registrations?.rows.length) {
+      this.registrations = registrations.rows.map((registration) => ({
+        ...registration,
+        createdAt: new Date(registration.createdAt).toISOString()
+      }));
+    }
+  }
 
   listEvents() {
     return this.events;
