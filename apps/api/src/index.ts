@@ -3,7 +3,6 @@ import cors from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { z } from "zod";
 import { composeFallbackAnswer } from "./answerComposer.js";
-import { filterToolsForRole, hasAdminIntent, partitionToolCallsByRole } from "./authorization.js";
 import { authenticate, initializeAuth, login, me, register, type AuthenticatedRequest } from "./auth.js";
 import { fallbackRoute } from "./fallbackRouter.js";
 import { McpClientManager } from "./mcpClientManager.js";
@@ -24,6 +23,16 @@ const endpoints: McpEndpoint[] = [
 const chatSchema = z.object({
   message: z.string().min(1)
 });
+
+const campusRecordWritePattern = /\b(create|add|insert|update|edit|delete|remove|mark|publish)\b/i;
+const studentSelfServicePattern = /\b(register for|sign up|reserve|renew|cancel.*registration|cancel.*reservation|rate|feedback)\b/i;
+const missingAnswerPattern = /\b(couldn'?t find|could not find|don'?t have|do not have|no information|not available|sorry)\b/i;
+
+const isCampusRecordWriteRequest = (message: string) =>
+  campusRecordWritePattern.test(message) && !studentSelfServicePattern.test(message);
+
+const hasUsefulFallbackAnswer = (answer: string) =>
+  answer.trim().length > 0 && !answer.startsWith("I could not");
 
 const manager = new McpClientManager(endpoints);
 const ollama = new OllamaClient(ollamaBaseUrl, ollamaModel);
@@ -53,11 +62,10 @@ app.post("/api/auth/register", asyncHandler(register));
 app.post("/api/auth/login", asyncHandler(login));
 app.get("/api/auth/me", requireAuth, asyncHandler(me as unknown as (req: Request, res: Response, next: NextFunction) => Promise<void>));
 
-app.get("/api/tools", requireAuth, asyncHandler(async (req, res) => {
+app.get("/api/tools", requireAuth, asyncHandler(async (_req, res) => {
   const result = await manager.listTools();
-  const user = (req as AuthenticatedRequest).user;
   res.json({
-    tools: filterToolsForRole(result.tools, user.role),
+    tools: result.tools,
     unavailableServers: result.unavailableServers
   });
 }));
@@ -83,11 +91,10 @@ app.post("/api/chat", requireAuth, asyncHandler(async (req, res) => {
   const { message } = parsed.data;
   const user = (req as AuthenticatedRequest).user;
   const { tools, unavailableServers } = await manager.listTools();
-  const allowedTools = filterToolsForRole(tools, user.role);
 
-  if (user.role === "student" && hasAdminIntent(message)) {
+  if (isCampusRecordWriteRequest(message)) {
     const response: ChatResponse = {
-      answer: "You are signed in as a student, so you cannot perform admin actions like creating, updating, deleting, publishing, or marking campus records. You can still ask to view books, menus, events, policies, schedules, and your own student-related information.",
+      answer: "This student dashboard is read-only for campus records, so I cannot create, update, delete, publish, or mark official library, cafeteria, event, or academic data. You can still ask me to search books, check availability, view menus, find events, read policies, and use student actions like reservations or event registration.",
       model: ollamaModel,
       usedOllama: false,
       usedFallbackRouter: false,
@@ -104,12 +111,12 @@ app.post("/api/chat", requireAuth, asyncHandler(async (req, res) => {
   let toolCalls: ToolCallPlan[] = [];
   let ollamaPlanningContent = "";
 
-  if (allowedTools.length > 0) {
+  if (tools.length > 0) {
     try {
-      const plan = await ollama.planToolCalls(message, allowedTools);
+      const plan = await ollama.planToolCalls(message, tools);
       usedOllama = true;
       ollamaPlanningContent = plan.content;
-      toolCalls = plan.toolCalls.filter((call) => allowedTools.some((tool) => tool.qualifiedName === call.qualifiedName));
+      toolCalls = plan.toolCalls.filter((call) => tools.some((tool) => tool.qualifiedName === call.qualifiedName));
     } catch {
       usedOllama = false;
     }
@@ -118,23 +125,6 @@ app.post("/api/chat", requireAuth, asyncHandler(async (req, res) => {
   if (toolCalls.length === 0) {
     usedFallbackRouter = true;
     toolCalls = fallbackRoute(message, user.id);
-  }
-
-  const partitioned = partitionToolCallsByRole(toolCalls, tools, user.role);
-  toolCalls = partitioned.allowed;
-
-  if (toolCalls.length === 0 && partitioned.denied.length > 0) {
-    const response: ChatResponse = {
-      answer: "You are signed in as a student, so you cannot perform that admin action. Please ask an admin user to make changes to campus records.",
-      model: ollamaModel,
-      usedOllama,
-      usedFallbackRouter,
-      toolCalls: [],
-      toolResults: [],
-      unavailableServers
-    };
-    res.json(response);
-    return;
   }
 
   const toolResults = await Promise.all(
@@ -146,16 +136,20 @@ app.post("/api/chat", requireAuth, asyncHandler(async (req, res) => {
   );
 
   let answer = "";
+  const fallbackAnswer = composeFallbackAnswer(message, toolResults);
   if (usedOllama && toolResults.some((result) => result.ok)) {
     try {
       answer = await ollama.synthesizeAnswer(message, toolResults);
+      if (missingAnswerPattern.test(answer) && hasUsefulFallbackAnswer(fallbackAnswer)) {
+        answer = fallbackAnswer;
+      }
     } catch {
-      answer = composeFallbackAnswer(message, toolResults);
+      answer = fallbackAnswer;
     }
   } else if (ollamaPlanningContent && toolResults.length === 0) {
     answer = ollamaPlanningContent;
   } else {
-    answer = composeFallbackAnswer(message, toolResults);
+    answer = fallbackAnswer;
   }
 
   const response: ChatResponse = {
