@@ -10,7 +10,7 @@
     "apps/*"
   ],
   "scripts": {
-    "predev": "npm run build -w @campus/shared && npm run build -w @campus/mcp-common",
+    "predev": "npm run build -w @campus/shared && npm run build -w @campus/db && npm run build -w @campus/mcp-common",
     "dev": "concurrently -n library,cafeteria,events,academics,api,web -c green,magenta,cyan,yellow,blue,white \"npm run dev -w @campus/library-mcp\" \"npm run dev -w @campus/cafeteria-mcp\" \"npm run dev -w @campus/events-mcp\" \"npm run dev -w @campus/academics-mcp\" \"npm run dev -w @campus/api\" \"npm run dev -w @campus/web\"",
     "build": "npm run build -ws",
     "typecheck": "npm run typecheck -ws --if-present",
