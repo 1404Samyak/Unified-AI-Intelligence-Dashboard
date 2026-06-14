@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { tryQuery } from "@campus/db";
 import {
   cafeteriaCounters,
   cafeteriaItems,
@@ -37,6 +38,67 @@ export class CafeteriaRepository {
       createdAt: new Date().toISOString()
     }
   ];
+
+  async loadFromDatabase() {
+    const [counters, items, menus, feedback] = await Promise.all([
+      tryQuery<CafeteriaCounter>("SELECT id, name, opens_at as \"opensAt\", closes_at as \"closesAt\", location FROM cafeteria.counters ORDER BY name"),
+      tryQuery<{
+        id: string;
+        name: string;
+        category: CafeteriaMenuItem["category"];
+        diet: CafeteriaMenuItem["diet"];
+        allergens: string[];
+        calories: number;
+        proteinGrams: string | number;
+        price: string | number;
+        counterId: string;
+        isAvailable: boolean;
+        tags: string[];
+      }>(
+        'SELECT id, name, category, diet, allergens, calories, protein_grams as "proteinGrams", price, counter_id as "counterId", is_available as "isAvailable", tags FROM cafeteria.menu_items ORDER BY name'
+      ),
+      tryQuery<{
+        id: string;
+        menuDate: Date;
+        dayOfWeek: string;
+        breakfast: string[];
+        lunch: string[];
+        dinner: string[];
+        specials: string[];
+      }>('SELECT id, menu_date as "menuDate", day_of_week as "dayOfWeek", breakfast, lunch, dinner, specials FROM cafeteria.daily_menus ORDER BY menu_date'),
+      tryQuery<MenuFeedback>('SELECT id, student_id as "studentId", item_id as "itemId", rating, message, created_at as "createdAt" FROM cafeteria.feedback ORDER BY created_at DESC')
+    ]);
+
+    if (counters?.rows.length) {
+      this.counters = counters.rows;
+    }
+
+    if (items?.rows.length) {
+      this.items = items.rows.map((item) => ({
+        ...item,
+        proteinGrams: Number(item.proteinGrams),
+        price: Number(item.price)
+      }));
+    }
+
+    if (menus?.rows.length) {
+      this.menus = menus.rows.map((menu) => ({
+        date: menu.menuDate.toISOString().slice(0, 10),
+        dayOfWeek: menu.dayOfWeek,
+        breakfast: menu.breakfast,
+        lunch: menu.lunch,
+        dinner: menu.dinner,
+        specials: menu.specials
+      }));
+    }
+
+    if (feedback?.rows.length) {
+      this.feedback = feedback.rows.map((item) => ({
+        ...item,
+        createdAt: new Date(item.createdAt).toISOString()
+      }));
+    }
+  }
 
   getTodayMenu() {
     return this.getMenuForDate(new Date().toISOString());
