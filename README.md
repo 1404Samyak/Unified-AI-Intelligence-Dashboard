@@ -137,13 +137,13 @@ Start Ollama separately:
 
 ```bash
 ollama serve
-ollama pull llama3.1
+ollama pull gpt-oss:20b
 ```
 
 Set your preferred model in `.env`:
 
 ```txt
-OLLAMA_MODEL=llama3.1
+OLLAMA_MODEL=gpt-oss:20b
 ```
 
 Start the full app:
