@@ -14,6 +14,7 @@ A student-facing campus dashboard that connects scattered college systems throug
 - One Postgres database design with separate schemas for each domain.
 - Local mock-data fallback so the demo works even before Postgres data wiring is extended.
 - Ollama integration through `http://localhost:11434/api/chat`.
+- JWT-style authentication with student and admin roles.
 
 ## Architecture
 
@@ -37,6 +38,7 @@ React + Vite dashboard
 - MCP: `@modelcontextprotocol/sdk`
 - LLM: Ollama local model
 - Database: PostgreSQL, one database with four schemas
+- Auth: signed bearer tokens, `public.users` table
 
 ## Project Structure
 
@@ -133,6 +135,13 @@ Copy the environment template if you want to change ports or model name:
 cp .env.example .env
 ```
 
+For register/login to work, update `.env` with your local Postgres password:
+
+```txt
+DATABASE_URL=postgres://postgres:YOUR_PASSWORD@localhost:5432/campus_dashboard
+AUTH_SECRET=replace-this-with-any-long-random-string
+```
+
 Start Ollama separately:
 
 ```bash
@@ -177,15 +186,18 @@ Academics: http://localhost:4104/mcp
 
 ## Postgres
 
-The database design uses one Postgres database with four schemas.
+The database design uses one Postgres database, one shared users table, and four campus schemas.
 
 ```txt
 campus_dashboard
+  public.users
   library.*
   cafeteria.*
   events.*
   academics.*
 ```
+
+`public.users` is intentionally not seeded. It is filled only when students/admins register from the app.
 
 Start Postgres with Docker:
 
@@ -202,6 +214,24 @@ npm run db:seed
 ```
 
 The current MVP repositories use seeded in-memory campus data for reliable demos. The SQL schema is ready for replacing repository methods with Postgres queries.
+
+The MCP servers now try to preload campus data from Postgres when `DATABASE_URL` is configured. If Postgres is not available, they fall back to the built-in demo data. Register/login requires Postgres because user accounts must be stored in `public.users`.
+
+## Roles
+
+Student registration asks for:
+
+```txt
+name, year, branch, semester, enrollment number, email, password
+```
+
+Admin registration asks for:
+
+```txt
+name, email, teacher ID, department, password
+```
+
+Students can view campus information and use student actions. Students cannot create, update, delete, publish, or mark campus records. Admins can use both student-facing tools and admin tools.
 
 ## Sample Queries
 
