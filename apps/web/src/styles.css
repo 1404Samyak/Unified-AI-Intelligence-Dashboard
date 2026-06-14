@@ -670,26 +670,6 @@ button {
   flex: 1;
 }
 
-.role-toggle {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.role-toggle button {
-  border: 1px solid #2d3a4f;
-  border-radius: 8px;
-  padding: 10px 12px;
-  background: #141d2a;
-  color: #d8e1ee;
-}
-
-.role-toggle button.active {
-  background: #62b6cb;
-  color: #071017;
-}
-
 .auth-form {
   display: grid;
   gap: 12px;
