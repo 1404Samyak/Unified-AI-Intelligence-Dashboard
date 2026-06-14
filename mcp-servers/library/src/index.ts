@@ -9,9 +9,10 @@ const port = Number(process.env.LIBRARY_MCP_PORT ?? 4101);
 startMcpHttpServer({
   port,
   label: "Library",
-  buildServer: () => {
+  buildServer: async () => {
     const server = createCampusServer("campus-library-mcp");
     const repository = new LibraryRepository();
+    await repository.loadFromDatabase();
     const service = new LibraryService(repository);
     registerLibraryTools(server, service);
     return server;
