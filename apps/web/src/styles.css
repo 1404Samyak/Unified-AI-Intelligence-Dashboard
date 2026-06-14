@@ -20,7 +20,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -115,6 +116,23 @@ button {
   border: 1px solid #334155;
   border-radius: 8px;
   background: #202b42;
+}
+
+.logout-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border: 1px solid #263246;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #111926;
+  color: #dbeafe;
+}
+
+.logout-button:hover {
+  background: #182231;
 }
 
 .student-panel {
@@ -618,6 +636,122 @@ button {
   color: #475569;
   white-space: pre-wrap;
   font-size: 12px;
+}
+
+.auth-shell {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 15% 20%, rgb(98 182 203 / 18%), transparent 28rem),
+    linear-gradient(135deg, #090d13 0%, #111722 48%, #080b10 100%);
+}
+
+.auth-card {
+  width: min(100%, 460px);
+  border: 1px solid #243044;
+  border-radius: 8px;
+  background: #101722;
+  padding: 22px;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 36%);
+}
+
+.auth-brand {
+  margin-bottom: 18px;
+}
+
+.auth-tabs {
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.auth-tabs button {
+  flex: 1;
+}
+
+.role-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.role-toggle button {
+  border: 1px solid #2d3a4f;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #141d2a;
+  color: #d8e1ee;
+}
+
+.role-toggle button.active {
+  background: #62b6cb;
+  color: #071017;
+}
+
+.auth-form {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 7px;
+  color: #c6d1df;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.auth-form input,
+.auth-form select {
+  width: 100%;
+  border: 1px solid #2d3a4f;
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: #0b1018;
+  color: #eef5ff;
+  outline: none;
+}
+
+.auth-form input:focus,
+.auth-form select:focus {
+  border-color: #62b6cb;
+  box-shadow: 0 0 0 3px rgb(98 182 203 / 18%);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.auth-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: #62b6cb;
+  color: #071017;
+  font-weight: 800;
+}
+
+.auth-submit:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.auth-error {
+  margin: 0;
+  border: 1px solid #7f1d1d;
+  border-radius: 8px;
+  padding: 10px 11px;
+  background: #2a1014;
+  color: #fecdd3;
+  font-size: 13px;
 }
 
 :root {
