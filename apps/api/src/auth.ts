@@ -3,19 +3,15 @@ import { ensureAuthTable, query } from "@campus/db";
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 
-export type UserRole = "student" | "admin";
-
 export type AuthUser = {
   id: string;
-  role: UserRole;
+  role: "student";
   name: string;
   email: string;
   yearOfStudy?: number;
   branch?: string;
   semester?: 1 | 2;
   enrollmentNumber?: string;
-  teacherId?: string;
-  department?: string;
 };
 
 export type AuthenticatedRequest = Request & {
@@ -85,44 +81,30 @@ const userFields = `
     year_of_study as "yearOfStudy",
     branch,
     semester,
-    enrollment_number as "enrollmentNumber",
-    teacher_id as "teacherId",
-    department
+    enrollment_number as "enrollmentNumber"
 `;
 
 const toPublicUser = (row: Record<string, unknown>): AuthUser => ({
   id: String(row.id),
-  role: row.role as UserRole,
+  role: "student",
   name: String(row.name),
   email: String(row.email),
   yearOfStudy: row.yearOfStudy === null || row.yearOfStudy === undefined ? undefined : Number(row.yearOfStudy),
   branch: row.branch ? String(row.branch) : undefined,
   semester: row.semester === null || row.semester === undefined ? undefined : (Number(row.semester) as 1 | 2),
-  enrollmentNumber: row.enrollmentNumber ? String(row.enrollmentNumber) : undefined,
-  teacherId: row.teacherId ? String(row.teacherId) : undefined,
-  department: row.department ? String(row.department) : undefined
+  enrollmentNumber: row.enrollmentNumber ? String(row.enrollmentNumber) : undefined
 });
 
-const registerSchema = z.discriminatedUnion("role", [
-  z.object({
-    role: z.literal("student"),
-    name: z.string().min(2),
-    email: z.string().email(),
-    password: z.string().min(6),
-    yearOfStudy: z.number().int().min(1).max(5),
-    branch: z.string().min(2),
-    semester: z.union([z.literal(1), z.literal(2)]),
-    enrollmentNumber: z.string().min(2)
-  }),
-  z.object({
-    role: z.literal("admin"),
-    name: z.string().min(2),
-    email: z.string().email(),
-    password: z.string().min(6),
-    teacherId: z.string().min(1),
-    department: z.string().min(2)
-  })
-]);
+const registerSchema = z.object({
+  role: z.literal("student").default("student"),
+  name: z.string().min(2),
+  email: z.string().email(),
+  password: z.string().min(6),
+  yearOfStudy: z.number().int().min(1).max(5),
+  branch: z.string().min(2),
+  semester: z.union([z.literal(1), z.literal(2)]),
+  enrollmentNumber: z.string().min(2)
+});
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -141,7 +123,7 @@ export async function register(req: Request, res: Response) {
   }
 
   const input = parsed.data;
-  const id = `${input.role}-${randomBytes(12).toString("hex")}`;
+  const id = `student-${randomBytes(12).toString("hex")}`;
   const passwordHash = hashPassword(input.password);
 
   try {
@@ -149,9 +131,9 @@ export async function register(req: Request, res: Response) {
       `
         INSERT INTO public.users (
           id, role, name, email, password_hash, year_of_study, branch, semester,
-          enrollment_number, teacher_id, department
+          enrollment_number
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, 'student', $2, $3, $4, $5, $6, $7, $8)
         RETURNING
           id,
           role,
@@ -160,22 +142,17 @@ export async function register(req: Request, res: Response) {
           year_of_study as "yearOfStudy",
           branch,
           semester,
-          enrollment_number as "enrollmentNumber",
-          teacher_id as "teacherId",
-          department
+          enrollment_number as "enrollmentNumber"
       `,
       [
         id,
-        input.role,
         input.name.trim(),
         input.email.trim().toLowerCase(),
         passwordHash,
-        input.role === "student" ? input.yearOfStudy : null,
-        input.role === "student" ? input.branch.trim() : null,
-        input.role === "student" ? input.semester : null,
-        input.role === "student" ? input.enrollmentNumber.trim() : null,
-        input.role === "admin" ? input.teacherId.trim() : null,
-        input.role === "admin" ? input.department.trim() : null
+        input.yearOfStudy,
+        input.branch.trim(),
+        input.semester,
+        input.enrollmentNumber.trim()
       ]
     );
 
@@ -183,7 +160,7 @@ export async function register(req: Request, res: Response) {
     res.status(201).json({ user, token: signToken({ sub: user.id, role: user.role }) });
   } catch (error) {
     const message = error instanceof Error && error.message.includes("duplicate")
-      ? "A user with this email, enrollment number, or teacher ID already exists."
+      ? "A student with this email or enrollment number already exists."
       : error instanceof Error
         ? error.message
         : "Registration failed";
@@ -204,7 +181,7 @@ export async function login(req: Request, res: Response) {
       ${userFields},
       password_hash as "passwordHash"
       FROM public.users
-      WHERE email = $1
+      WHERE email = $1 AND role = 'student'
     `,
     [parsed.data.email.trim().toLowerCase()]
   );
@@ -233,7 +210,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     return;
   }
 
-  const result = await query<Record<string, unknown>>(`SELECT ${userFields} FROM public.users WHERE id = $1`, [userId]);
+  const result = await query<Record<string, unknown>>(`SELECT ${userFields} FROM public.users WHERE id = $1 AND role = 'student'`, [userId]);
   const row = result.rows[0];
   if (!row) {
     res.status(401).json({ error: "User session is no longer valid." });
