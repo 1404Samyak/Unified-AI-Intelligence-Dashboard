@@ -35,9 +35,41 @@ export type ResearchPaper = {
 
 const normalize = (value: string) => value.trim().toLowerCase();
 
+const searchStopWords = new Set([
+  "a",
+  "all",
+  "and",
+  "book",
+  "books",
+  "course",
+  "courses",
+  "for",
+  "in",
+  "is",
+  "library",
+  "list",
+  "me",
+  "of",
+  "show",
+  "the",
+  "to"
+]);
+
 const matchText = (query: string, values: string[]) => {
   const q = normalize(query);
   return values.some((value) => normalize(value).includes(q));
+};
+
+const matchSearchQuery = (query: string, values: string[]) => {
+  const q = normalize(query);
+  if (!q) return true;
+  if (matchText(q, values)) return true;
+
+  const tokens = q
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length > 1 && !searchStopWords.has(token));
+
+  return tokens.some((token) => matchText(token, values));
 };
 
 export class LibraryRepository {
@@ -150,7 +182,7 @@ export class LibraryRepository {
     return this.books.filter((book) => {
       const queryMatch =
         !query ||
-        matchText(query, [
+        matchSearchQuery(query, [
           book.title,
           book.description,
           book.publisher,
