@@ -620,6 +620,225 @@ button {
   font-size: 12px;
 }
 
+:root {
+  color-scheme: dark;
+  background: #090d13;
+  color: #e7edf6;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgb(38 82 96 / 22%), transparent 34rem),
+    linear-gradient(135deg, #090d13 0%, #111722 48%, #080b10 100%);
+}
+
+.sidebar {
+  background: #0b1018;
+  border-right: 1px solid #232d3c;
+  color: #f8fafc;
+}
+
+.brand-mark {
+  background: #f6c94a;
+  color: #0b1018;
+}
+
+.brand-block p,
+.student-panel span,
+.status-line span,
+.source-card span,
+.compact-list span,
+.tool-column-head span {
+  color: #96a4b8;
+}
+
+.nav-stack button {
+  color: #b9c6d8;
+}
+
+.nav-stack button.active,
+.nav-stack button:hover {
+  color: #ffffff;
+  background: #182231;
+  border-color: #314057;
+}
+
+.student-panel,
+.status-panel {
+  border-color: #263246;
+  background: #111926;
+}
+
+.workspace {
+  background: transparent;
+  color: #e7edf6;
+}
+
+.eyebrow,
+.metric-card span,
+.source-card-head span,
+.compact-list span,
+.trace-row,
+.tool-row p,
+.muted,
+.json-preview {
+  color: #93a3b8;
+}
+
+.icon-button,
+.send-button {
+  border-color: #2d3a4f;
+  background: #151e2b;
+  color: #e7edf6;
+}
+
+.icon-button:hover,
+.send-button:hover:not(:disabled) {
+  background: #1c2838;
+}
+
+.alert-strip {
+  border-color: #7f1d1d;
+  background: #2a1014;
+  color: #fecdd3;
+}
+
+.metric-card,
+.source-card,
+.chat-panel,
+.source-rail,
+.tool-column,
+.empty-state {
+  border-color: #243044;
+  background: #101722;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 28%);
+}
+
+.metric-card.blue {
+  color: #7eb6ff;
+}
+
+.metric-card.green {
+  color: #7ee0bb;
+}
+
+.metric-card.amber {
+  color: #ffd166;
+}
+
+.metric-card.rose {
+  color: #ff8fa3;
+}
+
+.source-card.green .source-card-head {
+  color: #7ee0bb;
+}
+
+.source-card.amber .source-card-head {
+  color: #ffd166;
+}
+
+.source-card.rose .source-card-head {
+  color: #ff8fa3;
+}
+
+.source-card.blue .source-card-head {
+  color: #7eb6ff;
+}
+
+.compact-list li,
+.quick-row,
+.composer,
+.trace,
+.tool-column-head,
+.tool-row {
+  border-color: #233044;
+}
+
+.quick-row button {
+  background: #141d2a;
+  color: #d8e1ee;
+  border-color: #2c3a50;
+}
+
+.quick-row button:hover {
+  background: #1a2637;
+}
+
+.message.user {
+  background: #2b64b1;
+  color: #ffffff;
+}
+
+.message.assistant {
+  background: #141d2a;
+  color: #e7edf6;
+  border-color: #2c3a50;
+}
+
+.composer input {
+  border-color: #2d3a4f;
+  background: #0b1018;
+  color: #eef5ff;
+}
+
+.composer input::placeholder {
+  color: #73849c;
+}
+
+.composer input:focus {
+  border-color: #62b6cb;
+  box-shadow: 0 0 0 3px rgb(98 182 203 / 18%);
+}
+
+.send-button {
+  background: #62b6cb;
+  color: #071017;
+}
+
+.tool-pill.green,
+.rail-item.green {
+  background: #12372f;
+  color: #8df0cb;
+}
+
+.tool-pill.amber,
+.rail-item.amber {
+  background: #3b2b0f;
+  color: #ffd166;
+}
+
+.tool-pill.rose,
+.rail-item.rose {
+  background: #3a1620;
+  color: #ff9caf;
+}
+
+.tool-pill.blue,
+.rail-item.blue {
+  background: #132b4a;
+  color: #91c5ff;
+}
+
+.tool-pill.muted-pill {
+  background: #2a3341;
+  color: #c6d1df;
+}
+
+.segmented {
+  border-color: #263246;
+  background: #0b1018;
+}
+
+.segmented button {
+  color: #aab8ca;
+}
+
+.segmented button.active {
+  background: #62b6cb;
+  color: #071017;
+}
+
 @media (max-width: 1120px) {
   .app-shell {
     grid-template-columns: 92px minmax(0, 1fr);
