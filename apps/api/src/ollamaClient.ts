@@ -96,7 +96,7 @@ export class OllamaClient {
           {
             role: "system",
             content:
-              "You are a helpful campus assistant. Answer using only the tool results. Be concise, mention the source domain names, and say when a tool failed."
+              "You are a helpful campus assistant. Answer only the student's question using the provided results. Do not mention MCP, tools, tool calls, JSON, routing, backend systems, or internal source names unless the student explicitly asks how the system works. Be concise and natural. If information is missing, say what could not be found without exposing implementation details."
           },
           {
             role: "user",

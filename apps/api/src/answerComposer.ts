@@ -6,6 +6,8 @@ const summarizeValue = (value: unknown) => {
 
   if (record.error) return `Error: ${record.error}`;
 
+  if (typeof record.count === "number" && record.count === 0) return "";
+
   if (Array.isArray(record.books)) {
     return record.books
       .slice(0, 4)
@@ -25,8 +27,20 @@ const summarizeValue = (value: unknown) => {
   }
 
   if (record.menu && typeof record.menu === "object") {
-    const menu = record.menu as { dayOfWeek?: string; breakfast?: unknown[]; lunch?: unknown[]; dinner?: unknown[] };
-    return `${menu.dayOfWeek ?? "today"} menu: breakfast ${menu.breakfast?.length ?? 0}, lunch ${menu.lunch?.length ?? 0}, dinner ${menu.dinner?.length ?? 0} items.`;
+    const menu = record.menu as {
+      dayOfWeek?: string;
+      breakfast?: Array<{ name?: string }>;
+      lunch?: Array<{ name?: string }>;
+      dinner?: Array<{ name?: string }>;
+      specials?: Array<{ name?: string }>;
+    };
+    const meal = (label: string, items?: Array<{ name?: string }>) => {
+      const names = items?.map((item) => item.name).filter(Boolean);
+      return names?.length ? `${label}: ${names.join(", ")}` : "";
+    };
+    return [menu.dayOfWeek ? `${menu.dayOfWeek} menu` : "Today's menu", meal("Breakfast", menu.breakfast), meal("Lunch", menu.lunch), meal("Dinner", menu.dinner), meal("Specials", menu.specials)]
+      .filter(Boolean)
+      .join(". ");
   }
 
   if (Array.isArray(record.items)) {
@@ -82,16 +96,18 @@ export function composeFallbackAnswer(message: string, results: ToolExecutionRes
   const failed = results.filter((result) => !result.ok);
 
   if (successful.length === 0) {
-    return `I could not reach the campus MCP tools yet. ${failed.map((item) => item.error).filter(Boolean).join(" ")}`;
+    return `I could not retrieve the campus information right now. ${failed.map((item) => item.error).filter(Boolean).join(" ")}`;
   }
 
-  const lines = successful.map((result) => {
-    return `${result.domain}: ${summarizeValue(result.data)}`;
-  });
+  const lines = successful.map((result) => summarizeValue(result.data)).filter((line) => line.trim().length > 0);
 
   const failures = failed.length
-    ? `\n\nSome tools failed: ${failed.map((item) => `${item.qualifiedName} (${item.error})`).join("; ")}`
+    ? "\n\nSome related information could not be retrieved right now."
     : "";
 
-  return `For "${message}", I checked ${successful.map((result) => result.domain).join(", ")}.\n\n${lines.join("\n")}${failures}`;
+  if (lines.length === 0) {
+    return `I could not find a matching campus result for "${message}".${failures}`;
+  }
+
+  return `${lines.join("\n")}${failures}`;
 }
