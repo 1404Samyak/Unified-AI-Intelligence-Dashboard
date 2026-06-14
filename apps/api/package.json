@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@campus/db": "*",
     "@modelcontextprotocol/sdk": "^1.20.1",
     "@campus/shared": "*",
     "cors": "^2.8.5",
