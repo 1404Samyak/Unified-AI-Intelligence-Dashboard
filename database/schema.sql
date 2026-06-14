@@ -5,7 +5,7 @@ CREATE SCHEMA IF NOT EXISTS academics;
 
 CREATE TABLE IF NOT EXISTS public.users (
   id TEXT PRIMARY KEY,
-  role TEXT NOT NULL CHECK (role IN ('student', 'admin')),
+  role TEXT NOT NULL DEFAULT 'student' CHECK (role = 'student'),
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
@@ -13,8 +13,6 @@ CREATE TABLE IF NOT EXISTS public.users (
   branch TEXT,
   semester INTEGER CHECK (semester IN (1, 2)),
   enrollment_number TEXT UNIQUE,
-  teacher_id TEXT UNIQUE,
-  department TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
