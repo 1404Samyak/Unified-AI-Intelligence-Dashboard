@@ -10,7 +10,7 @@ import type { ChatResponse, McpEndpoint, ToolCallPlan } from "./types.js";
 
 const port = Number(process.env.API_PORT ?? 4000);
 const ollamaBaseUrl = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434";
-const ollamaModel = process.env.OLLAMA_MODEL ?? "llama3.1";
+const ollamaModel = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
 
 const endpoints: McpEndpoint[] = [
   { domain: "library", label: "Library", url: process.env.LIBRARY_MCP_URL ?? "http://localhost:4101/mcp" },
