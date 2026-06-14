@@ -14,7 +14,7 @@ A student-facing campus dashboard that connects scattered college systems throug
 - One Postgres database design with separate schemas for each domain.
 - Local mock-data fallback so the demo works even before Postgres data wiring is extended.
 - Ollama integration through `http://localhost:11434/api/chat`.
-- JWT-style authentication with student and admin roles.
+- Student login/register with signed bearer tokens.
 
 ## Architecture
 
@@ -69,9 +69,7 @@ find_books_by_author, find_books_by_subject, find_books_by_course,
 get_new_arrivals, get_popular_books, get_related_books, get_library_hours,
 get_user_borrowed_books, get_user_due_dates, get_user_fines, renew_book,
 reserve_book, cancel_book_reservation, check_digital_copy_available,
-search_journals, search_research_papers, create_book, update_book,
-delete_book, create_book_copy, update_book_copy_status, create_author,
-update_author, create_library_notice
+search_journals, search_research_papers
 ```
 
 Cafeteria tools:
@@ -83,10 +81,7 @@ filter_menu_by_allergen, get_food_item_details, get_food_nutrition,
 get_food_price, get_available_counters, get_counter_timings,
 get_cafeteria_hours, get_today_specials, get_low_cost_meals, get_veg_menu,
 get_non_veg_menu, get_jain_menu, get_student_favorite_items,
-rate_food_item, submit_menu_feedback, create_menu_item, update_menu_item,
-delete_menu_item, create_daily_menu, update_daily_menu,
-mark_item_unavailable, create_counter, update_counter,
-create_cafeteria_notice
+rate_food_item, submit_menu_feedback
 ```
 
 Events tools:
@@ -99,9 +94,7 @@ get_workshops, get_seminars, get_hackathons, get_event_schedule,
 get_event_venue, get_events_near_now, get_free_events,
 get_registration_required_events, check_event_registration_status,
 register_for_event, cancel_event_registration, get_my_registered_events,
-get_club_details, search_clubs, create_event, update_event, delete_event,
-create_club, update_club, create_event_session, update_event_session,
-mark_event_cancelled, create_event_announcement
+get_club_details, search_clubs
 ```
 
 Academics tools:
@@ -114,10 +107,7 @@ get_course_credits, get_syllabus, search_syllabus_topics,
 get_faculty_details, search_faculty, get_academic_calendar,
 get_exam_schedule, get_assignment_deadlines, get_holiday_list,
 get_lab_rules, get_library_rules, get_hostel_rules, get_scholarship_info,
-get_fee_deadlines, get_department_notices, create_course, update_course,
-delete_course, create_syllabus, update_syllabus, create_policy_document,
-update_policy_document, create_academic_notice, update_academic_notice,
-create_exam_schedule, update_exam_schedule
+get_fee_deadlines, get_department_notices
 ```
 
 ## Setup
@@ -197,7 +187,7 @@ campus_dashboard
   academics.*
 ```
 
-`public.users` is intentionally not seeded. It is filled only when students/admins register from the app.
+`public.users` is intentionally not seeded. It is filled only when students register from the app.
 
 Start Postgres with Docker:
 
@@ -217,7 +207,7 @@ The current MVP repositories use seeded in-memory campus data for reliable demos
 
 The MCP servers now try to preload campus data from Postgres when `DATABASE_URL` is configured. If Postgres is not available, they fall back to the built-in demo data. Register/login requires Postgres because user accounts must be stored in `public.users`.
 
-## Roles
+## Student Auth
 
 Student registration asks for:
 
@@ -225,13 +215,7 @@ Student registration asks for:
 name, year, branch, semester, enrollment number, email, password
 ```
 
-Admin registration asks for:
-
-```txt
-name, email, teacher ID, department, password
-```
-
-Students can view campus information and use student actions. Students cannot create, update, delete, publish, or mark campus records. Admins can use both student-facing tools and admin tools.
+The dashboard is student-facing. Students can search campus information, check availability, view menus, find events, read policies, and use student actions such as book reservations, event registration, and cafeteria feedback. Official campus records are read-only in this demo.
 
 ## Sample Queries
 
