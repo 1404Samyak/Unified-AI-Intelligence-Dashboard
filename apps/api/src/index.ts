@@ -5,13 +5,14 @@ import { z } from "zod";
 import { composeFallbackAnswer } from "./answerComposer.js";
 import { authenticate, initializeAuth, login, me, register, type AuthenticatedRequest } from "./auth.js";
 import { fallbackRoute } from "./fallbackRouter.js";
+import { LlmClient } from "./llmClient.js";
 import { McpClientManager } from "./mcpClientManager.js";
-import { OllamaClient } from "./ollamaClient.js";
 import type { ChatResponse, McpEndpoint, ToolCallPlan } from "./types.js";
 
 const port = Number(process.env.API_PORT ?? 4000);
-const ollamaBaseUrl = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434";
-const ollamaModel = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
+const llmBaseUrl = process.env.GROQ_BASE_URL ?? "https://api.groq.com/openai/v1";
+const llmModel = process.env.GROQ_MODEL ?? "openai/gpt-oss-20b";
+const llmApiKey = process.env.GROQ_API_KEY ?? "";
 
 const endpoints: McpEndpoint[] = [
   { domain: "library", label: "Library", url: process.env.LIBRARY_MCP_URL ?? "http://localhost:4101/mcp" },
@@ -35,7 +36,11 @@ const hasUsefulFallbackAnswer = (answer: string) =>
   answer.trim().length > 0 && !answer.startsWith("I could not");
 
 const manager = new McpClientManager(endpoints);
-const ollama = new OllamaClient(ollamaBaseUrl, ollamaModel);
+const llm = new LlmClient({
+  baseUrl: llmBaseUrl,
+  apiKey: llmApiKey,
+  model: llmModel
+});
 const app = express();
 
 const asyncHandler =
@@ -53,7 +58,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     service: "campus-ai-backend",
-    ollama: { baseUrl: ollamaBaseUrl, model: ollamaModel },
+    llm: { baseUrl: llmBaseUrl, model: llmModel, apiKeyConfigured: Boolean(llmApiKey) },
     mcpServers: endpoints
   });
 });
@@ -95,8 +100,8 @@ app.post("/api/chat", requireAuth, asyncHandler(async (req, res) => {
   if (isCampusRecordWriteRequest(message)) {
     const response: ChatResponse = {
       answer: "This student dashboard is read-only for campus records, so I cannot create, update, delete, publish, or mark official library, cafeteria, event, or academic data. You can still ask me to search books, check availability, view menus, find events, read policies, and use student actions like reservations or event registration.",
-      model: ollamaModel,
-      usedOllama: false,
+      model: llmModel,
+      usedLlm: false,
       usedFallbackRouter: false,
       toolCalls: [],
       toolResults: [],
@@ -106,19 +111,19 @@ app.post("/api/chat", requireAuth, asyncHandler(async (req, res) => {
     return;
   }
 
-  let usedOllama = false;
+  let usedLlm = false;
   let usedFallbackRouter = false;
   let toolCalls: ToolCallPlan[] = [];
-  let ollamaPlanningContent = "";
+  let llmPlanningContent = "";
 
   if (tools.length > 0) {
     try {
-      const plan = await ollama.planToolCalls(message, tools);
-      usedOllama = true;
-      ollamaPlanningContent = plan.content;
+      const plan = await llm.planToolCalls(message, tools);
+      usedLlm = true;
+      llmPlanningContent = plan.content;
       toolCalls = plan.toolCalls.filter((call) => tools.some((tool) => tool.qualifiedName === call.qualifiedName));
     } catch {
-      usedOllama = false;
+      usedLlm = false;
     }
   }
 
@@ -137,25 +142,25 @@ app.post("/api/chat", requireAuth, asyncHandler(async (req, res) => {
 
   let answer = "";
   const fallbackAnswer = composeFallbackAnswer(message, toolResults);
-  if (usedOllama && toolResults.some((result) => result.ok)) {
+  if (usedLlm && toolResults.some((result) => result.ok)) {
     try {
-      answer = await ollama.synthesizeAnswer(message, toolResults);
+      answer = await llm.synthesizeAnswer(message, toolResults);
       if (missingAnswerPattern.test(answer) && hasUsefulFallbackAnswer(fallbackAnswer)) {
         answer = fallbackAnswer;
       }
     } catch {
       answer = fallbackAnswer;
     }
-  } else if (ollamaPlanningContent && toolResults.length === 0) {
-    answer = ollamaPlanningContent;
+  } else if (llmPlanningContent && toolResults.length === 0) {
+    answer = llmPlanningContent;
   } else {
     answer = fallbackAnswer;
   }
 
   const response: ChatResponse = {
     answer,
-    model: ollamaModel,
-    usedOllama,
+    model: llmModel,
+    usedLlm,
     usedFallbackRouter,
     toolCalls,
     toolResults,

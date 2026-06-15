@@ -38,7 +38,7 @@ export type ChatRequest = {
 export type ChatResponse = {
   answer: string;
   model: string;
-  usedOllama: boolean;
+  usedLlm: boolean;
   usedFallbackRouter: boolean;
   toolCalls: ToolCallPlan[];
   toolResults: ToolExecutionResult[];

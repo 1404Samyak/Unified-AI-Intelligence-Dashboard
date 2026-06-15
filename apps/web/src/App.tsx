@@ -68,7 +68,7 @@ function App() {
   const [dashboard, setDashboard] = useState<ToolResult[]>([]);
   const [tools, setTools] = useState<RegisteredTool[]>([]);
   const [unavailable, setUnavailable] = useState<string[]>([]);
-  const [model, setModel] = useState("ollama");
+  const [model, setModel] = useState("LLM API");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -127,7 +127,7 @@ function App() {
     setRefreshing(true);
     try {
       const [health, dashboardResult, toolResult] = await Promise.all([getHealth(), getDashboard(), getTools()]);
-      setModel(health.ollama?.model ?? "ollama");
+      setModel(health.llm?.model ?? "LLM API");
       setDashboard(dashboardResult.cards);
       setTools(toolResult.tools);
       setUnavailable(toolResult.unavailableServers);

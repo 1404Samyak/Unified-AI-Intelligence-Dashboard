@@ -43,7 +43,7 @@ export type ToolResult = {
 export type ChatResponse = {
   answer: string;
   model: string;
-  usedOllama: boolean;
+  usedLlm: boolean;
   usedFallbackRouter: boolean;
   toolCalls: Array<{
     qualifiedName: string;
@@ -105,7 +105,7 @@ async function parseResponse<T>(response: Response) {
 
 export async function getHealth() {
   const response = await fetch(`${API_URL}/api/health`);
-  return parseResponse<{ ollama?: { model?: string } }>(response);
+  return parseResponse<{ llm?: { model?: string; apiKeyConfigured?: boolean } }>(response);
 }
 
 export async function getDashboard() {
