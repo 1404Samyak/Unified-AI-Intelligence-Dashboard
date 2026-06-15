@@ -20,11 +20,24 @@ A student-facing campus dashboard that connects scattered college systems throug
 
 - Frontend: https://unified-ai-intelligence-dashboard-gvpyur7gv.vercel.app/
 - API: https://campus-ai-api-swwq.onrender.com
-- API health: https://campus-ai-api-swwq.onrender.com/api/health
-- Library MCP health: https://library-dashboard-buxt.onrender.com/health
-- Cafeteria MCP health: https://cafeteria-dashboard.onrender.com/health
-- Events MCP health: https://events-dashboard-sgga.onrender.com/health
-- Academics MCP health: https://academics-dashboard.onrender.com/health
+
+Important evaluator note: the backend services are hosted on Render free tier, so they may sleep after inactivity. This is Render cold-start behavior, not an application error. To make the demo work smoothly, please open all five health URLs below first and wait for each one to return JSON before opening the Vercel frontend app.
+
+Health checks to wake the services:
+
+```txt
+API:        https://campus-ai-api-swwq.onrender.com/api/health
+Library:    https://library-dashboard-buxt.onrender.com/health
+Cafeteria: https://cafeteria-dashboard.onrender.com/health
+Events:    https://events-dashboard-sgga.onrender.com/health
+Academics: https://academics-dashboard.onrender.com/health
+```
+
+After all five health checks respond, open the frontend:
+
+```txt
+https://unified-ai-intelligence-dashboard-gvpyur7gv.vercel.app/
+```
 
 ## Architecture
 
