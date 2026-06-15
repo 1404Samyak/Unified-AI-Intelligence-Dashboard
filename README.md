@@ -18,8 +18,13 @@ A student-facing campus dashboard that connects scattered college systems throug
 
 ## Deployed Demo
 
-- Frontend: https://unified-ai-intelligence-dashboard-w.vercel.app/
+- Frontend: https://unified-ai-intelligence-dashboard-gvpyur7gv.vercel.app/
+- API: https://campus-ai-api-swwq.onrender.com
 - API health: https://campus-ai-api-swwq.onrender.com/api/health
+- Library MCP health: https://library-dashboard-buxt.onrender.com/health
+- Cafeteria MCP health: https://cafeteria-dashboard.onrender.com/health
+- Events MCP health: https://events-dashboard-sgga.onrender.com/health
+- Academics MCP health: https://academics-dashboard.onrender.com/health
 
 ## Architecture
 
@@ -150,10 +155,10 @@ AUTH_SECRET=replace-this-with-any-long-random-string
 GROQ_API_KEY=YOUR_GROQ_API_KEY_HERE
 GROQ_BASE_URL=https://api.groq.com/openai/v1
 GROQ_MODEL=openai/gpt-oss-20b
-LIBRARY_MCP_URL=https://your-library-mcp.onrender.com/mcp
-CAFETERIA_MCP_URL=https://your-cafeteria-mcp.onrender.com/mcp
-EVENTS_MCP_URL=https://your-events-mcp.onrender.com/mcp
-ACADEMICS_MCP_URL=https://your-academics-mcp.onrender.com/mcp
+LIBRARY_MCP_URL=https://library-dashboard-buxt.onrender.com/mcp
+CAFETERIA_MCP_URL=https://cafeteria-dashboard.onrender.com/mcp
+EVENTS_MCP_URL=https://events-dashboard-sgga.onrender.com/mcp
+ACADEMICS_MCP_URL=https://academics-dashboard.onrender.com/mcp
 ```
 
 Start the full app:
