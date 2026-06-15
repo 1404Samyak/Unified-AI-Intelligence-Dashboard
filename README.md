@@ -1,6 +1,6 @@
 # Unified AI Intelligence Dashboard
 
-A student-facing campus dashboard that connects scattered college systems through independent MCP servers. The AI backend talks to a local Ollama model, discovers tools from each MCP server, executes the selected tools in real time, and returns one unified answer.
+A student-facing campus dashboard that connects scattered college systems through independent MCP servers. The AI backend talks to a hosted LLM API, discovers tools from each MCP server, executes the selected tools in real time, and returns one unified answer.
 
 ## What This Builds
 
@@ -13,7 +13,7 @@ A student-facing campus dashboard that connects scattered college systems throug
   - Academics MCP
 - One Postgres database design with separate schemas for each domain.
 - Local mock-data fallback so the demo works even before Postgres data wiring is extended.
-- Ollama integration through `http://localhost:11434/api/chat`.
+- Hosted LLM integration through a Groq/OpenAI-compatible chat completions API.
 - Student login/register with signed bearer tokens.
 
 ## Architecture
@@ -21,7 +21,7 @@ A student-facing campus dashboard that connects scattered college systems throug
 ```txt
 React + Vite dashboard
   -> Node.js AI backend
-      -> Ollama local model
+      -> Hosted LLM API
       -> MCP client manager
           -> Library MCP server
           -> Cafeteria MCP server
@@ -36,7 +36,7 @@ React + Vite dashboard
 - Frontend: React, Vite, TypeScript, CSS, lucide-react
 - Backend: Node.js 22, TypeScript, Express
 - MCP: `@modelcontextprotocol/sdk`
-- LLM: Ollama local model
+- LLM: Groq/OpenAI-compatible hosted API
 - Database: PostgreSQL, one database with four schemas
 - Auth: signed bearer tokens, `public.users` table
 
@@ -125,24 +125,30 @@ Copy the environment template if you want to change ports or model name:
 cp .env.example .env
 ```
 
-For register/login to work, update `.env` with your local Postgres password:
+For register/login to work, update `.env` with your local Postgres password. For LLM reasoning, add your hosted API key:
 
 ```txt
 DATABASE_URL=postgres://postgres:YOUR_PASSWORD@localhost:5432/campus_dashboard
 AUTH_SECRET=replace-this-with-any-long-random-string
+GROQ_API_KEY=YOUR_GROQ_API_KEY_HERE
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_MODEL=openai/gpt-oss-20b
 ```
 
-Start Ollama separately:
+The backend uses a Groq/OpenAI-compatible `/chat/completions` API for tool planning and answer synthesis. The API key belongs only in backend environment variables, never in the frontend.
 
-```bash
-ollama serve
-ollama pull gpt-oss:20b
-```
-
-Set your preferred model in `.env`:
+For deployment on Render, configure the API backend service with:
 
 ```txt
-OLLAMA_MODEL=gpt-oss:20b
+DATABASE_URL=your_neon_database_url
+AUTH_SECRET=replace-this-with-any-long-random-string
+GROQ_API_KEY=YOUR_GROQ_API_KEY_HERE
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_MODEL=openai/gpt-oss-20b
+LIBRARY_MCP_URL=https://your-library-mcp.onrender.com/mcp
+CAFETERIA_MCP_URL=https://your-cafeteria-mcp.onrender.com/mcp
+EVENTS_MCP_URL=https://your-events-mcp.onrender.com/mcp
+ACADEMICS_MCP_URL=https://your-academics-mcp.onrender.com/mcp
 ```
 
 Start the full app:
