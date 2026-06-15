@@ -20,6 +20,7 @@ A student-facing campus dashboard that connects scattered college systems throug
 
 - Frontend: https://unified-ai-intelligence-dashboard-gvpyur7gv.vercel.app/
 - API: https://campus-ai-api-swwq.onrender.com
+- Demo video: https://youtu.be/XD2FfHbvjVc
 
 Important evaluator note: the backend services are hosted on Render free tier, so they may sleep after inactivity. This is Render cold-start behavior, not an application error. To make the demo work smoothly, please open all five health URLs below first and wait for each one to return JSON before opening the Vercel frontend app.
 
