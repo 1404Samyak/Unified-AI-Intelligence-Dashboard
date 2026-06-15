@@ -16,6 +16,11 @@ A student-facing campus dashboard that connects scattered college systems throug
 - Hosted LLM integration through a Groq/OpenAI-compatible chat completions API.
 - Student login/register with signed bearer tokens.
 
+## Deployed Demo
+
+- Frontend: https://unified-ai-intelligence-dashboard-w.vercel.app/
+- API health: https://campus-ai-api-swwq.onrender.com/api/health
+
 ## Architecture
 
 ```txt
